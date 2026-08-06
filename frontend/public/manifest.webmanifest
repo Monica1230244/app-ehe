@@ -1,0 +1,9 @@
+{
+  "name": "EHE ERP",
+  "short_name": "EHE",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "description": "Gestion de fabrication de chaussures sur mesure",
+  "icons": []
+}

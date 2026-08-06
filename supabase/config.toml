@@ -1,0 +1,4 @@
+project_id = "app-ehe"
+
+[functions.create-user]
+verify_jwt = true

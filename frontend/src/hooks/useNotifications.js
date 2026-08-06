@@ -1,33 +1,30 @@
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import { supabase } from '../api/supabase';
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE ? import.meta.env.VITE_API_BASE.replace('/api', '') : 'http://localhost:4000';
-
-export default function useNotifications() {
+export default function useNotifications(user) {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('ehe_token');
-    if (!token) {
+    if (!user?.id) {
       return;
     }
 
-    const socket = io(SOCKET_URL, {
-      auth: { token }
-    });
-
-    socket.on('connect', () => {
-      console.log('Socket connected', socket.id);
-    });
-
-    socket.on('notification', (payload) => {
-      setNotifications((current) => [payload.notification, ...current]);
-    });
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        setNotifications((current) => [payload.new, ...current]);
+      })
+      .subscribe();
 
     return () => {
-      socket.disconnect();
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user?.id]);
 
   return notifications;
 }

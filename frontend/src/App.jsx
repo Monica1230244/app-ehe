@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -11,6 +11,9 @@ import Users from './pages/Users';
 import Notifications from './pages/Notifications';
 import useNotifications from './hooks/useNotifications';
 import NotificationToast from './components/NotificationToast';
+import InstallAppButton from './components/InstallAppButton';
+import api from './api/client';
+import { isSupabaseConfigured } from './api/supabase';
 
 function getStoredUser() {
   try {
@@ -23,7 +26,7 @@ function getStoredUser() {
 
 function App() {
   const [user, setUser] = useState(getStoredUser);
-  const realtimeNotifications = useNotifications();
+  const realtimeNotifications = useNotifications(user);
   const isManager = user && ['revendeur', 'admin'].includes(user.role);
 
   function handleLogin(currentUser) {
@@ -31,15 +34,26 @@ function App() {
     setUser(currentUser);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    await api.logout();
     localStorage.removeItem('ehe_token');
     localStorage.removeItem('ehe_user');
     setUser(null);
   }
 
+  if (!isSupabaseConfigured) {
+    return (
+      <main className="mx-auto max-w-2xl p-6">
+        <h1 className="text-2xl font-bold">Configuration requise</h1>
+        <p className="mt-3 text-slate-600">Ajoutez l’adresse et la clé publique Supabase dans les variables de déploiement GitHub.</p>
+      </main>
+    );
+  }
+
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="min-h-screen bg-slate-50 text-slate-900">
+        <InstallAppButton />
         <NotificationToast message={realtimeNotifications[0]?.message} />
         {user ? (
           <>
@@ -70,7 +84,7 @@ function App() {
           </Routes>
         )}
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

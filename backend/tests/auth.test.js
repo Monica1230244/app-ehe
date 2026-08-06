@@ -2,6 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
 const { createServer } = require('node:http');
+
+process.env.NODE_ENV = 'test';
+
 const { app } = require('../src/app');
 
 test('register/login/me flow works', async () => {

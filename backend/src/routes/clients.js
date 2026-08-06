@@ -1,72 +1,96 @@
 const express = require('express');
-const { authMiddleware } = require('./auth');
+const { authMiddleware, requireRoles } = require('./auth');
 const pool = require('../db');
-const router = express.Router();
+const { useMemoryStore } = require('../config');
 
-let memoryClients = [];
+const router = express.Router();
+const memoryClients = [];
 let memoryClientId = 1;
 
-async function findClientById(id) {
-  try {
-    const result = await pool.query('SELECT * FROM clients WHERE id = $1', [id]);
-    return result.rows[0] || null;
-  } catch (error) {
-    return memoryClients.find((client) => client.id === Number(id)) || null;
-  }
+function ownsClient(client, user) {
+  return user.role === 'admin' || client.revendeur_id === user.id;
 }
 
-async function searchClients(query) {
-  try {
-    const text = `SELECT * FROM clients WHERE LOWER(nom) LIKE LOWER($1) ORDER BY created_at DESC LIMIT 200`;
-    const values = [`%${query}%`];
-    const result = await pool.query(text, values);
-    return result.rows;
-  } catch (error) {
-    return memoryClients.filter((client) => client.nom.toLowerCase().includes(query.toLowerCase()));
+async function findClientById(id, user) {
+  if (useMemoryStore) {
+    const client = memoryClients.find((item) => item.id === Number(id));
+    return client && ownsClient(client, user) ? client : null;
   }
+
+  const values = [id];
+  let ownership = '';
+  if (user.role !== 'admin') {
+    values.push(user.id);
+    ownership = 'AND revendeur_id = $2';
+  }
+  const result = await pool.query(`SELECT * FROM clients WHERE id = $1 ${ownership}`, values);
+  return result.rows[0] || null;
 }
 
-async function listClients() {
-  try {
-    const result = await pool.query('SELECT * FROM clients ORDER BY created_at DESC LIMIT 200');
-    return result.rows;
-  } catch (error) {
-    return memoryClients.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+async function listClients(search, user) {
+  if (useMemoryStore) {
+    return memoryClients
+      .filter((client) => ownsClient(client, user))
+      .filter((client) => {
+        const haystack = `${client.nom} ${client.telephone || ''}`.toLowerCase();
+        return haystack.includes(search.toLowerCase());
+      })
+      .sort((first, second) => new Date(second.created_at) - new Date(first.created_at));
   }
+
+  const values = [`%${search}%`];
+  let ownership = '';
+  if (user.role !== 'admin') {
+    values.push(user.id);
+    ownership = 'AND revendeur_id = $2';
+  }
+  const result = await pool.query(
+    `SELECT *
+     FROM clients
+     WHERE (nom ILIKE $1 OR COALESCE(telephone, '') ILIKE $1)
+     ${ownership}
+     ORDER BY created_at DESC
+     LIMIT 200`,
+    values
+  );
+  return result.rows;
 }
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireRoles('revendeur', 'admin'));
 
 router.post('/', async (req, res) => {
   const { nom, telephone, email, notes } = req.body;
-  if (!nom) {
-    return res.status(400).json({ error: 'Le nom du client est requis.' });
+  if (!nom?.trim() || !telephone?.trim()) {
+    return res.status(400).json({ error: 'Le nom et le numéro de téléphone sont requis.' });
   }
 
   try {
-    const clientData = { nom, telephone: telephone || null, email: email || null, notes: notes || null };
+    const clientData = {
+      nom: nom.trim(),
+      telephone: telephone.trim(),
+      email: email?.trim() || null,
+      notes: notes?.trim() || null,
+      revendeur_id: req.user.id
+    };
 
-    try {
-      const result = await pool.query(
-        `INSERT INTO clients (nom, telephone, email, notes)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [clientData.nom, clientData.telephone, clientData.email, clientData.notes]
-      );
-      return res.status(201).json({ client: result.rows[0] });
-    } catch (error) {
+    if (useMemoryStore) {
       const client = {
         id: memoryClientId++,
-        nom: clientData.nom,
-        telephone: clientData.telephone,
-        email: clientData.email,
-        notes: clientData.notes,
+        ...clientData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
       memoryClients.push(client);
       return res.status(201).json({ client });
     }
+
+    const result = await pool.query(
+      `INSERT INTO clients (nom, telephone, email, notes, revendeur_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [clientData.nom, clientData.telephone, clientData.email, clientData.notes, clientData.revendeur_id]
+    );
+    return res.status(201).json({ client: result.rows[0] });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Impossible de créer le client.' });
@@ -75,8 +99,8 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const search = req.query.q?.toString() || '';
-    const clients = search ? await searchClients(search) : await listClients();
+    const search = req.query.q?.toString().trim() || '';
+    const clients = await listClients(search, req.user);
     return res.json({ clients });
   } catch (error) {
     console.error(error);
@@ -84,11 +108,36 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id/commandes', async (req, res) => {
+  try {
+    const client = await findClientById(req.params.id, req.user);
+    if (!client) {
+      return res.status(404).json({ error: 'Client introuvable.' });
+    }
+
+    if (useMemoryStore) {
+      return res.json({ commandes: [] });
+    }
+
+    const result = await pool.query(
+      `SELECT id, numero_commande, modele, statut, date_creation, date_souhaitee
+       FROM commandes
+       WHERE client_id = $1
+       ORDER BY date_creation DESC`,
+      [client.id]
+    );
+    return res.json({ commandes: result.rows });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Impossible de récupérer l’historique du client.' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
-    const client = await findClientById(req.params.id);
+    const client = await findClientById(req.params.id, req.user);
     if (!client) {
-      return res.status(404).json({ error: 'Client non trouvé.' });
+      return res.status(404).json({ error: 'Client introuvable.' });
     }
     return res.json({ client });
   } catch (error) {
@@ -98,34 +147,35 @@ router.get('/:id', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const { nom, telephone, email, notes } = req.body;
   try {
-    const client = await findClientById(req.params.id);
+    const client = await findClientById(req.params.id, req.user);
     if (!client) {
-      return res.status(404).json({ error: 'Client non trouvé.' });
+      return res.status(404).json({ error: 'Client introuvable.' });
     }
 
-    try {
-      const result = await pool.query(
-        `UPDATE clients SET nom = $1, telephone = $2, email = $3, notes = $4, updated_at = NOW() WHERE id = $5 RETURNING *`,
-        [nom || client.nom, telephone || client.telephone, email || client.email, notes || client.notes, req.params.id]
-      );
-      return res.json({ client: result.rows[0] });
-    } catch (error) {
-      const index = memoryClients.findIndex((item) => item.id === client.id);
-      if (index !== -1) {
-        memoryClients[index] = {
-          ...client,
-          nom: nom || client.nom,
-          telephone: telephone || client.telephone,
-          email: email || client.email,
-          notes: notes || client.notes,
-          updated_at: new Date().toISOString()
-        };
-        return res.json({ client: memoryClients[index] });
-      }
-      throw error;
+    const updatedData = {
+      nom: typeof req.body.nom === 'string' ? req.body.nom.trim() : client.nom,
+      telephone: typeof req.body.telephone === 'string' ? req.body.telephone.trim() : client.telephone,
+      email: typeof req.body.email === 'string' ? req.body.email.trim() || null : client.email,
+      notes: typeof req.body.notes === 'string' ? req.body.notes.trim() || null : client.notes
+    };
+    if (!updatedData.nom || !updatedData.telephone) {
+      return res.status(400).json({ error: 'Le nom et le numéro de téléphone sont requis.' });
     }
+
+    if (useMemoryStore) {
+      Object.assign(client, updatedData, { updated_at: new Date().toISOString() });
+      return res.json({ client });
+    }
+
+    const result = await pool.query(
+      `UPDATE clients
+       SET nom = $1, telephone = $2, email = $3, notes = $4
+       WHERE id = $5
+       RETURNING *`,
+      [updatedData.nom, updatedData.telephone, updatedData.email, updatedData.notes, client.id]
+    );
+    return res.json({ client: result.rows[0] });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Impossible de mettre à jour le client.' });

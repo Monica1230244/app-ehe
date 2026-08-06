@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
 
 export default function Login({ onLogin }) {
@@ -44,6 +45,7 @@ export default function Login({ onLogin }) {
         {error && <div className="text-red-600">{error}</div>}
         <button className="w-full bg-blue-600 text-white rounded px-4 py-2">Se connecter</button>
       </form>
+      <p className="mt-4 text-sm">Premier accès ? <Link to="/register" className="font-medium text-blue-700">Créer le compte revendeur</Link></p>
     </div>
   );
 }

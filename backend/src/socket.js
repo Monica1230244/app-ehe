@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const { clientOrigins, jwtSecret } = require('./config');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 let io = null;
 
 function init(server) {
@@ -9,7 +9,7 @@ function init(server) {
     return io;
   }
 
-  io = new Server(server, { cors: { origin: '*' } });
+  io = new Server(server, { cors: { origin: clientOrigins } });
 
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
@@ -18,7 +18,7 @@ function init(server) {
     }
 
     try {
-      const payload = jwt.verify(token, JWT_SECRET);
+      const payload = jwt.verify(token, jwtSecret);
       socket.user = payload;
       next();
     } catch (error) {
@@ -27,6 +27,7 @@ function init(server) {
   });
 
   io.on('connection', (socket) => {
+    socket.join(`user:${socket.user.id}`);
     console.log('socket connected', socket.id, socket.user?.email);
     socket.on('disconnect', () => console.log('socket disconnected', socket.id));
   });

@@ -1,145 +1,91 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
 
-const STATUS_LABELS = {
-  en_attente: 'En attente',
-  en_fabrication: 'En fabrication',
-  prete: 'Prête',
-  livree: 'Livrée',
-  annulee: 'Annulée'
-};
+const statusLabels = { en_attente: 'En attente', en_fabrication: 'En fabrication', prete: 'Prête', livree: 'Livrée', annulee: 'Annulée' };
 
-export default function OrderDetails(){
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [commande, setCommande] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
-
-  useEffect(()=>{
-    api.get(`/commandes/${id}`).then(r=>{ setCommande(r.data.commande); setLoading(false); }).catch(()=>setLoading(false));
-  },[id]);
-
-  const changeStatus = async (newStatus)=>{
-    try{
-      const res = await api.patch(`/commandes/${id}/status`, { statut: newStatus });
-      setCommande(res.data.commande);
-      setMessage('Statut mis à jour.');
-    }catch(err){
-      setMessage(err.response?.data?.error || 'Erreur lors de la mise à jour');
-    }
-  };
-
-  if(loading) return <div className="p-4">Chargement...</div>;
-  if(!commande) return <div className="p-4">Commande introuvable.</div>;
-
-  return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <button className="text-blue-600 mb-4" onClick={()=>navigate(-1)}>← Retour</button>
-      <h1 className="text-2xl font-bold mb-2">{commande.numero_commande}</h1>
-      <div className="space-y-2">
-        <div><strong>Statut:</strong> {STATUS_LABELS[commande.statut] || commande.statut}</div>
-        <div><strong>Modèle:</strong> {commande.modele}</div>
-        <div><strong>Pointure:</strong> {commande.pointure}</div>
-        <div><strong>Couleur:</strong> {commande.couleur}</div>
-        <div><strong>Matière:</strong> {commande.matiere}</div>
-        <div><strong>Semelle:</strong> {commande.semelle}</div>
-        <div><strong>Quantité:</strong> {commande.quantite}</div>
-        <div><strong>Observations:</strong> {commande.observations}</div>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        {commande.statut !== 'en_fabrication' && (
-          <button onClick={()=>changeStatus('en_fabrication')} className="bg-blue-600 text-white px-3 py-2 rounded">Commencer fabrication</button>
-        )}
-        {commande.statut !== 'prete' && (
-          <button onClick={()=>changeStatus('prete')} className="bg-green-600 text-white px-3 py-2 rounded">Marquer prête</button>
-        )}
-        {commande.statut !== 'livree' && (
-          <button onClick={()=>changeStatus('livree')} className="bg-black text-white px-3 py-2 rounded">Marquer livrée</button>
-        )}
-      </div>
-
-      {message && <div className="mt-4 text-sm">{message}</div>}
-    </div>
-  );
+function dateLabel(value) {
+  return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
 }
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import api from '../api/client';
 
-export default function OrderDetails() {
+export default function OrderDetails({ user }) {
   const { id } = useParams();
   const [commande, setCommande] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [photos, setPhotos] = useState([]);
+  const [history, setHistory] = useState([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const user = (() => {
+  async function loadOrder() {
+    setLoading(true);
     try {
-      return JSON.parse(localStorage.getItem('ehe_user'));
-    } catch {
-      return null;
+      const [commandeResponse, photosResponse, historyResponse] = await Promise.all([
+        api.get(`/commandes/${id}`),
+        api.get('/photos', { params: { commande_id: id } }),
+        api.get(`/commandes/${id}/history`)
+      ]);
+      setCommande(commandeResponse.data.commande);
+      setPhotos(photosResponse.data.photos);
+      setHistory(historyResponse.data.history);
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de charger la commande.');
+    } finally {
+      setLoading(false);
     }
-  })();
+  }
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .get(`/commandes/${id}`)
-      .then((res) => setCommande(res.data.commande))
-      .catch((err) => setMessage(err.response?.data?.error || 'Impossible de charger la commande'))
-      .finally(() => setLoading(false));
+    loadOrder();
   }, [id]);
 
-  const changeStatus = async (newStatus) => {
+  async function changeStatus(statut) {
     try {
-      const res = await api.patch(`/commandes/${id}/status`, { statut: newStatus });
-      setCommande(res.data.commande);
+      const response = await api.patch(`/commandes/${id}/status`, { statut });
+      setCommande(response.data.commande);
       setMessage('Statut mis à jour.');
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Erreur lors de la mise à jour');
+      await loadOrder();
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Cette mise à jour est impossible.');
     }
-  };
+  }
 
-  if (loading) return <div className="p-4">Chargement...</div>;
-  if (!commande) return <div className="p-4">Commande introuvable.</div>;
+  if (loading) return <div className="p-4">Chargement…</div>;
+  if (!commande) return <div className="p-4"><p>{message || 'Commande introuvable.'}</p><Link className="mt-3 inline-block text-blue-700" to="/orders">Retour aux commandes</Link></div>;
+
+  const actions = [];
+  if (user.role === 'cordonnier' && commande.statut === 'en_attente') actions.push(['en_fabrication', 'Commencer la fabrication', 'bg-blue-700']);
+  if (user.role === 'cordonnier' && commande.statut === 'en_fabrication') actions.push(['prete', 'Marquer comme prête', 'bg-emerald-700']);
+  if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete') actions.push(['livree', 'Confirmer la livraison', 'bg-slate-900']);
+  if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente') actions.push(['annulee', 'Annuler la commande', 'bg-red-700']);
 
   return (
-    <div className="p-4 max-w-2xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold">{commande.numero_commande}</h1>
-      <div className="rounded border p-4 bg-white">
-        <div><strong>Modèle:</strong> {commande.modele}</div>
-        <div><strong>Pointure:</strong> {commande.pointure}</div>
-        <div><strong>Couleur:</strong> {commande.couleur}</div>
-        <div><strong>Matière:</strong> {commande.matiere}</div>
-        <div><strong>Semelle:</strong> {commande.semelle}</div>
-        <div><strong>Quantité:</strong> {commande.quantite}</div>
-        <div><strong>Statut:</strong> {commande.statut}</div>
-        <div><strong>Date création:</strong> {commande.date_creation}</div>
-        {commande.observations && <div><strong>Observations:</strong> {commande.observations}</div>}
-      </div>
-
-      {user?.role === 'cordonnier' && (
-        <div className="space-x-2">
-          {commande.statut !== 'en_fabrication' && (
-            <button onClick={() => changeStatus('en_fabrication')} className="bg-blue-600 text-white px-3 py-2 rounded">Commencer fabrication</button>
-          )}
-          {commande.statut !== 'prete' && (
-            <button onClick={() => changeStatus('prete')} className="bg-green-600 text-white px-3 py-2 rounded">Marquer prête</button>
-          )}
+    <div className="mx-auto max-w-4xl space-y-5 p-4">
+      <Link to="/orders" className="text-sm font-medium text-blue-700">← Retour aux commandes</Link>
+      <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h1 className="text-2xl font-bold">{commande.numero_commande}</h1><p className="mt-1 text-slate-600">{statusLabels[commande.statut]}</p></div>
+          <span className="rounded bg-slate-100 px-3 py-2 text-sm">Créée le {dateLabel(commande.date_creation)}</span>
         </div>
-      )}
-
-      {user?.role === 'revendeur' && (
-        <div className="space-x-2">
-          {commande.statut !== 'annulee' && (
-            <button onClick={() => changeStatus('annulee')} className="bg-red-600 text-white px-3 py-2 rounded">Annuler</button>
-          )}
+        {user.role !== 'cordonnier' && commande.client_nom && <div className="mt-4 rounded bg-slate-50 p-3 text-sm"><strong>Client :</strong> {commande.client_nom} — {commande.client_telephone}</div>}
+        <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+          {[['Modèle', commande.modele], ['Pointure', commande.pointure], ['Couleur', commande.couleur], ['Matière', commande.matiere], ['Semelle', commande.semelle], ['Quantité', commande.quantite], ['Date souhaitée', commande.date_souhaitee || '—'], ['Observations', commande.observations || '—']].map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd className="font-medium">{value}</dd></div>)}
+        </dl>
+        {actions.length > 0 && <div className="mt-5 flex flex-wrap gap-3">{actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}</div>}
+      </section>
+      <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-bold">Photos de fabrication</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {photos.length === 0 && <p className="text-sm text-slate-600">Aucune photo jointe.</p>}
+          {photos.map((photo) => <figure key={photo.id} className="overflow-hidden rounded border"><img className="aspect-square w-full object-cover" src={photo.storage_path} alt={photo.type_photo.replace('_', ' ')} /><figcaption className="p-2 text-sm capitalize">{photo.type_photo.replace('_', ' ')}</figcaption></figure>)}
         </div>
-      )}
-
-      {message && <div className="text-sm text-indigo-700">{message}</div>}
+      </section>
+      <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-bold">Historique</h2>
+        <ol className="mt-3 space-y-3 border-l pl-4">
+          {history.map((entry) => <li key={`${entry.statut}-${entry.created_at}`}><strong>{statusLabels[entry.statut]}</strong><p className="text-sm text-slate-600">{dateLabel(entry.created_at)}{entry.commentaire ? ` — ${entry.commentaire}` : ''}</p></li>)}
+        </ol>
+      </section>
+      {message && <p className="text-sm text-slate-700">{message}</p>}
     </div>
   );
 }

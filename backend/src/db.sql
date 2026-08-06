@@ -14,6 +14,7 @@ CREATE TABLE users (
 
 CREATE TABLE clients (
   id SERIAL PRIMARY KEY,
+  revendeur_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   nom VARCHAR(255) NOT NULL,
   telephone VARCHAR(50),
   email VARCHAR(255),
@@ -65,6 +66,7 @@ CREATE TABLE notifications (
 CREATE TABLE commande_statuts (
   id SERIAL PRIMARY KEY,
   commande_id INTEGER NOT NULL REFERENCES commandes(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   statut VARCHAR(20) NOT NULL CHECK (statut IN ('en_attente', 'en_fabrication', 'prete', 'livree', 'annulee')),
   commentaire TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -91,6 +93,7 @@ BEFORE UPDATE ON commandes
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE INDEX idx_commandes_client_id ON commandes(client_id);
+CREATE INDEX idx_clients_revendeur_id ON clients(revendeur_id);
 CREATE INDEX idx_commandes_revendeur_id ON commandes(revendeur_id);
 CREATE INDEX idx_commandes_cordonnier_id ON commandes(cordonnier_id);
 CREATE INDEX idx_commandes_statut ON commandes(statut);

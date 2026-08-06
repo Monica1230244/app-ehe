@@ -1,65 +1,68 @@
-import { useMemo, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
+import OrderDetails from './pages/OrderDetails';
 import CreateOrder from './pages/CreateOrder';
+import Clients from './pages/Clients';
+import Users from './pages/Users';
 import Notifications from './pages/Notifications';
-import UploadPhoto from './pages/UploadPhoto';
 import useNotifications from './hooks/useNotifications';
 import NotificationToast from './components/NotificationToast';
 
-function App() {
-  const [user, setUser] = useState(() => {
+function getStoredUser() {
+  try {
     const stored = localStorage.getItem('ehe_user');
     return stored ? JSON.parse(stored) : null;
-  });
+  } catch {
+    return null;
+  }
+}
 
-  const handleLogin = (currentUser) => {
+function App() {
+  const [user, setUser] = useState(getStoredUser);
+  const realtimeNotifications = useNotifications();
+  const isManager = user && ['revendeur', 'admin'].includes(user.role);
+
+  function handleLogin(currentUser) {
     localStorage.setItem('ehe_user', JSON.stringify(currentUser));
     setUser(currentUser);
-  };
+  }
 
-  const handleLogout = () => {
+  function handleLogout() {
     localStorage.removeItem('ehe_token');
     localStorage.removeItem('ehe_user');
     setUser(null);
-  };
-
-  const realtimeNotifications = useNotifications();
-  const latestNotification = realtimeNotifications[0];
-
-  const authRoutes = useMemo(
-    () => (
-      <>
-        <nav className="bg-white border-b p-4 flex gap-3 flex-wrap">
-          <Link to="/" className="text-blue-600">Tableau de bord</Link>
-          <Link to="/orders" className="text-blue-600">Commandes</Link>
-          <Link to="/create-order" className="text-blue-600">Créer commande</Link>
-          <Link to="/notifications" className="text-blue-600">Notifications</Link>
-          <Link to="/upload" className="text-blue-600">Upload photo</Link>
-          <button onClick={handleLogout} className="text-red-600">Déconnexion</button>
-        </nav>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/create-order" element={<CreateOrder />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/upload" element={<UploadPhoto />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </>
-    ),
-    []
-  );
+  }
 
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-50 text-slate-900">
-        <NotificationToast message={latestNotification?.message} />
+        <NotificationToast message={realtimeNotifications[0]?.message} />
         {user ? (
-          authRoutes
+          <>
+            <nav className="flex flex-wrap gap-3 border-b bg-white p-4 text-sm shadow-sm">
+              <Link to="/" className="font-medium text-blue-700">Tableau de bord</Link>
+              <Link to="/orders" className="font-medium text-blue-700">Commandes</Link>
+              {isManager && <Link to="/clients" className="font-medium text-blue-700">Clients</Link>}
+              {isManager && <Link to="/create-order" className="font-medium text-blue-700">Nouvelle commande</Link>}
+              {isManager && <Link to="/users" className="font-medium text-blue-700">Utilisateurs</Link>}
+              <Link to="/notifications" className="font-medium text-blue-700">Notifications</Link>
+              <button type="button" onClick={handleLogout} className="font-medium text-red-700">Déconnexion</button>
+            </nav>
+            <Routes>
+              <Route path="/" element={<Dashboard user={user} />} />
+              <Route path="/orders" element={<Orders user={user} />} />
+              <Route path="/orders/:id" element={<OrderDetails user={user} />} />
+              <Route path="/clients" element={isManager ? <Clients /> : <Navigate to="/orders" replace />} />
+              <Route path="/create-order" element={isManager ? <CreateOrder /> : <Navigate to="/orders" replace />} />
+              <Route path="/users" element={isManager ? <Users /> : <Navigate to="/orders" replace />} />
+              <Route path="/notifications" element={<Notifications realtimeNotifications={realtimeNotifications} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </>
         ) : (
           <Routes>
             <Route path="/register" element={<Register onRegister={handleLogin} />} />

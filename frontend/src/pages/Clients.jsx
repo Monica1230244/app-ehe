@@ -1,0 +1,87 @@
+import { useEffect, useState } from 'react';
+import api from '../api/client';
+
+const emptyForm = { nom: '', telephone: '', email: '', notes: '' };
+
+export default function Clients() {
+  const [clients, setClients] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState('');
+  const [message, setMessage] = useState('');
+  const [history, setHistory] = useState({ clientId: null, commandes: [] });
+
+  async function loadClients(query = search) {
+    try {
+      const response = await api.get('/clients', { params: query ? { q: query } : {} });
+      setClients(response.data.clients);
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de charger les clients.');
+    }
+  }
+
+  useEffect(() => {
+    loadClients('');
+  }, []);
+
+  async function submitClient(event) {
+    event.preventDefault();
+    try {
+      const response = await api.post('/clients', form);
+      setClients((current) => [response.data.client, ...current]);
+      setForm(emptyForm);
+      setMessage('Client enregistré.');
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible d’enregistrer le client.');
+    }
+  }
+
+  async function showHistory(clientId) {
+    try {
+      const response = await api.get(`/clients/${clientId}/commandes`);
+      setHistory({ clientId, commandes: response.data.commandes });
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de récupérer l’historique.');
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6 p-4">
+      <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <h1 className="text-2xl font-bold">Clients</h1>
+        <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={submitClient}>
+          <input className="rounded border px-3 py-2" placeholder="Nom complet" value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} required />
+          <input className="rounded border px-3 py-2" placeholder="Téléphone" value={form.telephone} onChange={(event) => setForm({ ...form, telephone: event.target.value })} required />
+          <input className="rounded border px-3 py-2" type="email" placeholder="Email (facultatif)" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          <input className="rounded border px-3 py-2" placeholder="Notes (facultatif)" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+          <button className="rounded bg-blue-700 px-4 py-2 font-medium text-white md:col-span-2">Enregistrer le client</button>
+        </form>
+      </section>
+
+      <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); loadClients(); }}>
+          <input className="w-full rounded border px-3 py-2" placeholder="Rechercher par nom ou téléphone" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <button className="rounded border px-4 py-2 font-medium">Rechercher</button>
+        </form>
+        <div className="mt-4 divide-y">
+          {clients.length === 0 && <p className="py-3 text-slate-600">Aucun client trouvé.</p>}
+          {clients.map((client) => (
+            <article key={client.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <div>
+                <h2 className="font-semibold">{client.nom}</h2>
+                <p className="text-sm text-slate-600">{client.telephone}</p>
+                {client.email && <p className="text-sm text-slate-600">{client.email}</p>}
+              </div>
+              <button type="button" onClick={() => showHistory(client.id)} className="rounded border border-blue-700 px-3 py-2 text-sm font-medium text-blue-700">Historique</button>
+              {history.clientId === client.id && (
+                <div className="w-full rounded bg-slate-50 p-3 text-sm">
+                  {history.commandes.length === 0 ? 'Aucune commande pour ce client.' : history.commandes.map((commande) => <p key={commande.id}>{commande.numero_commande} — {commande.statut}</p>)}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+      {message && <p className="text-sm text-slate-700">{message}</p>}
+    </div>
+  );
+}

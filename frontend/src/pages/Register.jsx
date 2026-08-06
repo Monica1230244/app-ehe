@@ -20,7 +20,8 @@ export default function Register({ onRegister }) {
 
   return (
     <div className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Créer un compte</h1>
+      <h1 className="text-2xl font-bold mb-4">Créer le compte revendeur</h1>
+      <p className="mb-4 text-sm text-slate-600">Les comptes cordonnier et les autres revendeurs sont créés depuis l’application.</p>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
           <label className="block text-sm font-medium">Nom</label>

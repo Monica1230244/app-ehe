@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware } = require('./auth');
+const { authMiddleware, requireRoles } = require('./auth');
 const { listNotifications, markAsRead, createNotification } = require('../services/notificationService');
 const { getIo } = require('../socket');
 const router = express.Router();
@@ -16,13 +16,16 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireRoles('revendeur', 'admin'), async (req, res) => {
   try {
-    const { message, commande_id } = req.body;
-    const notification = await createNotification(req.user.id, message, commande_id || null);
+    const { message, commande_id: commandeId, user_id: userId } = req.body;
+    if (!message?.trim()) {
+      return res.status(400).json({ error: 'Le message est requis.' });
+    }
+    const notification = await createNotification(userId || req.user.id, message.trim(), commandeId || null);
     const io = getIo();
     if (io) {
-      io.emit('notification', { notification });
+      io.to(`user:${notification.user_id}`).emit('notification', { notification });
     }
     return res.status(201).json({ notification });
   } catch (error) {

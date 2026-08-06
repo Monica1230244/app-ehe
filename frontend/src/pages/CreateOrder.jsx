@@ -95,8 +95,8 @@ export default function CreateOrder() {
             </select>
           </label>
           <label className="grid gap-1 text-sm font-medium">Cordonnier
-            <select name="cordonnier_id" className="rounded border px-3 py-2 font-normal" value={form.cordonnier_id} onChange={updateForm}>
-              <option value="">Attribuer plus tard</option>
+            <select name="cordonnier_id" className="rounded border px-3 py-2 font-normal" value={form.cordonnier_id} onChange={updateForm} required>
+              <option value="">Sélectionner un cordonnier</option>
               {cordonniers.map((cordonnier) => <option key={cordonnier.id} value={cordonnier.id}>{cordonnier.nom}</option>)}
             </select>
           </label>

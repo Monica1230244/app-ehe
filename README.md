@@ -2,6 +2,13 @@
 
 Application PWA de gestion de fabrication de chaussures sur mesure. Elle permet au revendeur de gérer ses clients et commandes, et au cordonnier de suivre uniquement les commandes qui lui sont attribuées.
 
+## Version en ligne recommandée
+
+- GitHub Pages héberge l’application installable sur Android et iOS.
+- Supabase fournit l’authentification, PostgreSQL, le stockage sécurisé des photos et les mises à jour en temps réel.
+- Le guide complet se trouve dans [`CLOUD_DEPLOYMENT.md`](CLOUD_DEPLOYMENT.md).
+- L’URL prévue est [https://monica1230244.github.io/app-ehe/](https://monica1230244.github.io/app-ehe/).
+
 ## Fonctionnalités
 
 - comptes revendeur et cordonnier avec accès par rôle ;

@@ -241,7 +241,7 @@ as $$
 declare
   current_order public.commandes%rowtype;
   updated_order public.commandes%rowtype;
-  current_role text;
+  actor_role text;
   transition_allowed boolean := false;
 begin
   if p_nouveau_statut not in ('en_attente', 'en_fabrication', 'prete', 'livree', 'annulee') then
@@ -257,23 +257,23 @@ begin
     raise exception 'Commande introuvable';
   end if;
 
-  current_role := public.current_user_role();
+  actor_role := public.current_user_role();
 
-  if current_role = 'cordonnier' then
+  if actor_role = 'cordonnier' then
     if current_order.cordonnier_id is distinct from auth.uid() then
       raise exception 'Cette commande ne vous est pas attribuée';
     end if;
     transition_allowed :=
       (current_order.statut = 'en_attente' and p_nouveau_statut = 'en_fabrication')
       or (current_order.statut = 'en_fabrication' and p_nouveau_statut = 'prete');
-  elsif current_role = 'revendeur' then
+  elsif actor_role = 'revendeur' then
     if current_order.revendeur_id is distinct from auth.uid() then
       raise exception 'Accès refusé';
     end if;
     transition_allowed :=
       (current_order.statut = 'en_attente' and p_nouveau_statut = 'annulee')
       or (current_order.statut = 'prete' and p_nouveau_statut = 'livree');
-  elsif current_role = 'admin' then
+  elsif actor_role = 'admin' then
     transition_allowed := true;
   else
     raise exception 'Accès refusé';

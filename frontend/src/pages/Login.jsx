@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import AuthLayout from '../components/AuthLayout';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, allowRegistration = false }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -46,7 +46,9 @@ export default function Login({ onLogin }) {
         {error && <div className="alert alert-error" role="alert">{error}</div>}
         <button className="primary-button" disabled={isSubmitting}>{isSubmitting ? 'Connexion…' : 'Se connecter'}<span aria-hidden="true">→</span></button>
       </form>
-      <p className="auth-switch">Premier accès ? <Link to="/register">Créer le compte revendeur</Link></p>
+      {allowRegistration
+        ? <p className="auth-switch">Premier accès ? <Link to="/register">Créer le compte revendeur</Link></p>
+        : <p className="auth-switch">Les accès sont créés et attribués par le revendeur.</p>}
     </AuthLayout>
   );
 }

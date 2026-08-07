@@ -16,6 +16,8 @@ import Brand from './components/Brand';
 import api from './api/client';
 import { isSupabaseConfigured, supabase } from './api/supabase';
 
+const allowPublicSignup = import.meta.env.VITE_ALLOW_PUBLIC_SIGNUP === 'true';
+
 function getStoredUser() {
   try {
     const stored = localStorage.getItem('ehe_user');
@@ -161,8 +163,8 @@ function App() {
         </div>
       ) : (
         <Routes>
-          <Route path="/register" element={<Register onRegister={handleLogin} />} />
-          <Route path="/*" element={<Login onLogin={handleLogin} />} />
+          <Route path="/register" element={allowPublicSignup ? <Register onRegister={handleLogin} /> : <Navigate to="/" replace />} />
+          <Route path="/*" element={<Login onLogin={handleLogin} allowRegistration={allowPublicSignup} />} />
         </Routes>
       )}
     </HashRouter>

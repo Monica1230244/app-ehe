@@ -41,11 +41,13 @@ Dans l’onglet `Actions` du dépôt, lancez manuellement le workflow `Deploy Su
 
 ## 5. Premier démarrage
 
-1. Ouvrez le lien et créez le premier compte revendeur.
-2. Confirmez l’email si Supabase le demande, puis reconnectez-vous.
-3. Depuis `Utilisateurs`, créez au moins un compte cordonnier.
-4. Créez un client puis une commande, choisissez le cordonnier et joignez les trois photos.
-5. Connectez-vous comme cordonnier sur un autre appareil : seules les commandes attribuées apparaissent.
+1. Activez temporairement `Allow new users to sign up` dans Supabase et définissez la variable GitHub `VITE_ALLOW_PUBLIC_SIGNUP` à `true`.
+2. Ouvrez le lien et créez le premier compte revendeur.
+3. Confirmez l’email si Supabase le demande, puis reconnectez-vous.
+4. Remettez immédiatement `VITE_ALLOW_PUBLIC_SIGNUP` à `false`, republiez la PWA et désactivez `Allow new users to sign up` dans Supabase.
+5. Depuis `Utilisateurs`, créez au moins un compte cordonnier.
+6. Créez un client puis une commande, choisissez le cordonnier et joignez les trois photos.
+7. Connectez-vous comme cordonnier sur un autre appareil : seules les commandes attribuées apparaissent.
 
 ## Installation mobile
 

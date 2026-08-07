@@ -44,4 +44,4 @@ La base est initialisée automatiquement à partir de `backend/src/db.sql` lors 
 
 ## Livraison client
 
-Avant remise, créez les comptes nécessaires, testez une commande complète avec les trois photos et conservez une copie sécurisée du volume PostgreSQL. L’application n’est pas hébergée publiquement : elle fonctionne localement tant que les services backend, frontend et PostgreSQL sont démarrés.
+Avant remise, désactivez les inscriptions publiques dans Supabase, créez les comptes nécessaires depuis l’espace revendeur et testez une commande complète avec les trois photos. La PWA est publiée sur GitHub Pages et les données sont conservées dans Supabase ; prévoyez également une procédure régulière d’export ou de sauvegarde des données.

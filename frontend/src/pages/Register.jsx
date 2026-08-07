@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
+import AuthLayout from '../components/AuthLayout';
 
 export default function Register({ onRegister }) {
   const [nom, setNom] = useState('');
@@ -8,63 +9,68 @@ export default function Register({ onRegister }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSuccess('');
+    setIsSubmitting(true);
     try {
       const response = await api.post('/auth/register', { nom, email, password });
       if (response.data.requiresEmailConfirmation) {
-        setSuccess('Compte créé. Consultez votre email pour confirmer le compte, puis connectez-vous.');
+        setSuccess(`Un email de confirmation a été envoyé à ${email}. Ouvrez-le sur ce téléphone, puis revenez vous connecter.`);
         return;
       }
       localStorage.setItem('ehe_token', response.data.token);
       onRegister(response.data.user);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur d’enregistrement');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Créer le compte revendeur</h1>
-      <p className="mb-4 text-sm text-slate-600">Les comptes cordonnier et les autres revendeurs sont créés depuis l’application.</p>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div>
-          <label className="block text-sm font-medium">Nom</label>
-          <input
-            value={nom}
-            onChange={(e) => setNom(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            required
-          />
+    <AuthLayout eyebrow="Première configuration" title="Créez votre espace revendeur" subtitle="Ce premier compte administrera les clients, les commandes et les artisans.">
+      {success ? (
+        <div className="confirmation-card">
+          <span className="confirmation-icon">✓</span>
+          <h2>Vérifiez votre boîte email</h2>
+          <p>{success}</p>
+          <Link className="primary-button" to="/">Aller à la connexion <span aria-hidden="true">→</span></Link>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Email</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            type="email"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Mot de passe</label>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            type="password"
-            required
-          />
-        </div>
-        {error && <div className="text-red-600">{error}</div>}
-        {success && <div className="text-emerald-700">{success}</div>}
-        <button className="w-full bg-blue-600 text-white rounded px-4 py-2">Créer le compte</button>
-      </form>
-      <p className="mt-4 text-sm"><Link to="/" className="font-medium text-blue-700">Retour à la connexion</Link></p>
-    </div>
+      ) : (
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <label className="form-field">
+            <span>Nom complet</span>
+            <span className="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-5 3.6-8 8-8s8 3 8 8" /></svg>
+              <input value={nom} onChange={(event) => setNom(event.target.value)} placeholder="Votre nom" autoComplete="name" required />
+            </span>
+          </label>
+          <label className="form-field">
+            <span>Adresse email</span>
+            <span className="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6" /></svg>
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="vous@entreprise.com" autoComplete="email" required />
+            </span>
+          </label>
+          <label className="form-field">
+            <span>Mot de passe</span>
+            <span className="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v10H5z" /></svg>
+              <input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? 'text' : 'password'} placeholder="8 caractères minimum" minLength="8" autoComplete="new-password" required />
+              <button className="password-toggle" type="button" onClick={() => setShowPassword((current) => !current)}>{showPassword ? 'Masquer' : 'Voir'}</button>
+            </span>
+          </label>
+          <div className="password-hint"><span>✓</span> Utilisez au moins 8 caractères</div>
+          {error && <div className="alert alert-error" role="alert">{error}</div>}
+          <button className="primary-button" disabled={isSubmitting}>{isSubmitting ? 'Création…' : 'Créer mon espace'}<span aria-hidden="true">→</span></button>
+        </form>
+      )}
+      {!success && <p className="auth-switch">Vous avez déjà un compte ? <Link to="/">Se connecter</Link></p>}
+    </AuthLayout>
   );
 }

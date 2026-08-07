@@ -25,8 +25,8 @@ export default function Orders({ user }) {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4">
-      <h1 className="text-2xl font-bold">Commandes</h1>
+    <div className="page-shell space-y-5">
+      <div className="page-header"><div><h1>Commandes</h1><p>Recherchez une commande et suivez son état de fabrication.</p></div></div>
       <form className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); loadOrders(); }}>
         <input className="rounded border px-3 py-2" placeholder="N° de commande" value={filters.numero_commande} onChange={(event) => setFilters({ ...filters, numero_commande: event.target.value })} />
         <select className="rounded border px-3 py-2" value={filters.statut} onChange={(event) => setFilters({ ...filters, statut: event.target.value })}>
@@ -41,7 +41,7 @@ export default function Orders({ user }) {
         {commandes.length === 0 && <p className="rounded border bg-white p-4 text-slate-600">Aucune commande trouvée.</p>}
         {commandes.map((commande) => (
           <Link key={commande.id} to={`/orders/${commande.id}`} className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-blue-500">
-            <div className="flex flex-wrap justify-between gap-2"><strong>{commande.numero_commande}</strong><span className="rounded bg-slate-100 px-2 py-1 text-sm">{statusLabels[commande.statut]}</span></div>
+            <div className="flex flex-wrap justify-between gap-2"><strong>{commande.numero_commande}</strong><span className={`status-badge status-${commande.statut}`}>{statusLabels[commande.statut]}</span></div>
             <p className="mt-2 text-sm">{commande.modele} — pointure {commande.pointure}</p>
             {user.role !== 'cordonnier' && commande.client_nom && <p className="mt-1 text-sm text-slate-600">Client : {commande.client_nom}</p>}
           </Link>

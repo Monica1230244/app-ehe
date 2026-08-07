@@ -200,9 +200,17 @@ async function post(path, body) {
     const { data, error } = await supabase.auth.signUp({
       email: body.email,
       password: body.password,
-      options: { data: { nom: body.nom, role: 'revendeur' } }
+      options: {
+        data: { nom: body.nom, role: 'revendeur' },
+        emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+      }
     });
-    if (error) throw apiError(error, 'Impossible de créer le compte.');
+    if (error) {
+      const message = /already registered/i.test(error.message)
+        ? 'Un compte existe déjà avec cette adresse email. Essayez de vous connecter.'
+        : 'Impossible de créer le compte.';
+      throw apiError({ ...error, message }, message);
+    }
     if (!data.session) {
       return { data: { requiresEmailConfirmation: true } };
     }

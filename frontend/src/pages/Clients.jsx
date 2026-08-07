@@ -45,9 +45,10 @@ export default function Clients() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4">
+    <div className="page-shell space-y-6">
+      <div className="page-header"><div><h1>Clients</h1><p>Centralisez les coordonnées et l’historique de chaque client.</p></div></div>
       <section className="rounded-xl border bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-bold">Clients</h1>
+        <h2 className="text-lg font-bold">Ajouter un client</h2>
         <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={submitClient}>
           <input className="rounded border px-3 py-2" placeholder="Nom complet" value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} required />
           <input className="rounded border px-3 py-2" placeholder="Téléphone" value={form.telephone} onChange={(event) => setForm({ ...form, telephone: event.target.value })} required />

@@ -83,9 +83,8 @@ export default function CreateOrder() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-4">
-      <h1 className="text-2xl font-bold">Nouvelle commande</h1>
-      <p className="mt-1 text-sm text-slate-600">Les trois photos demandées par le cahier des charges sont obligatoires.</p>
+    <div className="page-shell max-w-3xl">
+      <div className="page-header"><div><h1>Nouvelle commande</h1><p>Renseignez le modèle, les mesures et les photos nécessaires à la fabrication.</p></div></div>
       <form className="mt-5 space-y-4 rounded-xl border bg-white p-5 shadow-sm" onSubmit={handleSubmit}>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium">Client

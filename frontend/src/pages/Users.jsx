@@ -34,9 +34,10 @@ export default function Users() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4">
+    <div className="page-shell max-w-4xl space-y-6">
+      <div className="page-header"><div><h1>Équipe</h1><p>Créez les accès des cordonniers et des revendeurs autorisés.</p></div></div>
       <section className="rounded-xl border bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-bold">Utilisateurs</h1>
+        <h2 className="text-lg font-bold">Ajouter un utilisateur</h2>
         <p className="mt-1 text-sm text-slate-600">Créez ici les comptes cordonnier ou revendeur autorisés.</p>
         <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={submitUser}>
           <input className="rounded border px-3 py-2" placeholder="Nom" value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} required />

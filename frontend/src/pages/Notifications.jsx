@@ -24,12 +24,12 @@ export default function Notifications({ realtimeNotifications }) {
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Notifications</h1>
+    <div className="page-shell max-w-2xl">
+      <div className="page-header"><div><h1>Notifications</h1><p>Les dernières informations importantes de votre atelier.</p></div></div>
       <div className="space-y-2">
         {notifications.length === 0 && <div>Aucune notification.</div>}
         {notifications.map((notification) => (
-          <div key={`${notification.id}-${notification.created_at}`} className="rounded border p-3 bg-white shadow-sm">
+          <div key={`${notification.id}-${notification.created_at}`} className={`notification-card${notification.lu ? '' : ' unread'}`}>
             <div className="text-sm">{notification.message}</div>
             <div className="text-xs text-gray-500">{notification.created_at}</div>
             {!notification.lu && <button type="button" onClick={() => markAsRead(notification.id)} className="mt-2 text-xs font-medium text-blue-700">Marquer comme lue</button>}

@@ -1,51 +1,52 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
+import AuthLayout from '../components/AuthLayout';
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError('');
+    setIsSubmitting(true);
     try {
       const response = await api.post('/auth/login', { email, password });
       localStorage.setItem('ehe_token', response.data.token);
       onLogin(response.data.user);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur de connexion');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Connexion EHE ERP</h1>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div>
-          <label className="block text-sm font-medium">Email</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            type="email"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Mot de passe</label>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            type="password"
-            required
-          />
-        </div>
-        {error && <div className="text-red-600">{error}</div>}
-        <button className="w-full bg-blue-600 text-white rounded px-4 py-2">Se connecter</button>
+    <AuthLayout eyebrow="Bienvenue" title="Heureux de vous revoir" subtitle="Connectez-vous pour piloter vos commandes et votre atelier.">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <label className="form-field">
+          <span>Adresse email</span>
+          <span className="input-wrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6" /></svg>
+            <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="vous@entreprise.com" autoComplete="email" required />
+          </span>
+        </label>
+        <label className="form-field">
+          <span>Mot de passe</span>
+          <span className="input-wrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v10H5z" /></svg>
+            <input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? 'text' : 'password'} placeholder="Votre mot de passe" autoComplete="current-password" required />
+            <button className="password-toggle" type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>{showPassword ? 'Masquer' : 'Voir'}</button>
+          </span>
+        </label>
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
+        <button className="primary-button" disabled={isSubmitting}>{isSubmitting ? 'Connexion…' : 'Se connecter'}<span aria-hidden="true">→</span></button>
       </form>
-      <p className="mt-4 text-sm">Premier accès ? <Link to="/register" className="font-medium text-blue-700">Créer le compte revendeur</Link></p>
-    </div>
+      <p className="auth-switch">Premier accès ? <Link to="/register">Créer le compte revendeur</Link></p>
+    </AuthLayout>
   );
 }

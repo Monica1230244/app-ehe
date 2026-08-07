@@ -211,6 +211,10 @@ async function post(path, body) {
         : 'Impossible de créer le compte.';
       throw apiError({ ...error, message }, message);
     }
+    if (data.user?.identities?.length === 0) {
+      const message = 'Un compte existe déjà avec cette adresse email. Essayez de vous connecter.';
+      throw apiError({ message }, message);
+    }
     if (!data.session) {
       return { data: { requiresEmailConfirmation: true } };
     }

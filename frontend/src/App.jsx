@@ -143,7 +143,13 @@ function App() {
                 <span className="topbar-greeting">Bonjour, {user.nom?.split(' ')[0]}</span>
                 <small>Voici l’activité de votre atelier aujourd’hui.</small>
               </div>
-              <span className="online-status"><i /> Données synchronisées</span>
+              <div className="topbar-actions">
+                <span className="online-status"><i /> Données synchronisées</span>
+                <button type="button" className="mobile-logout-button" onClick={handleLogout} aria-label="Se déconnecter">
+                  <span aria-hidden="true">↗</span>
+                  Quitter
+                </button>
+              </div>
             </header>
             <div className="page-content">
               <Routes>

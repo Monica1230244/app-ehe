@@ -7,6 +7,7 @@ import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import CreateOrder from './pages/CreateOrder';
 import Clients from './pages/Clients';
+import Stock from './pages/Stock';
 import Users from './pages/Users';
 import Messages from './pages/Messages';
 import Accounting from './pages/Accounting';
@@ -35,6 +36,7 @@ function NavIcon({ name }) {
     dashboard: 'M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-5H4v5Zm10-11h6V4h-6v5Z',
     orders: 'M6 3h12l2 4-8 4-8-4 2-4Zm-2 6 8 4 8-4v9l-8 4-8-4V9Z',
     clients: 'M16 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM7 13a4 4 0 1 0 0-8 4 4 0 0 0 0 0 8Zm9 1c-3.3 0-6 1.8-6 4v3h12v-3c0-2.2-2.7-4-6-4ZM7 15c-2.8 0-5 1.5-5 3.5V21h6v-3c0-1.1.4-2.1 1.2-2.9A8 8 0 0 0 7 15Z',
+    stock: 'M4 5.5 12 2l8 3.5V18l-8 4-8-4V5.5Zm3 1.4 5 2.2 5-2.2L12 4.7 7 6.9Zm-1 2v7.8l5 2.5v-8.1L6 8.9Zm7 10.3 5-2.5V8.9l-5 2.2v8.1Z',
     add: 'M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z',
     users: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14Z',
     messages: 'M4 4h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 5v2h12V9H6Zm0 4v2h8v-2H6Z',
@@ -113,6 +115,7 @@ function App() {
     { to: '/orders', label: 'Commandes', icon: 'orders' },
     ...(isManager ? [
       { to: '/clients', label: 'Clients', icon: 'clients' },
+      { to: '/stock', label: 'Stock', icon: 'stock' },
       { to: '/create-order', label: 'Nouvelle', icon: 'add' },
       { to: '/users', label: 'Équipe', icon: 'users' }
     ] : []),
@@ -166,6 +169,7 @@ function App() {
                 <Route path="/orders" element={<Orders user={user} />} />
                 <Route path="/orders/:id" element={<OrderDetails user={user} />} />
                 <Route path="/clients" element={isManager ? <Clients /> : <Navigate to="/orders" replace />} />
+                <Route path="/stock" element={isManager ? <Stock /> : <Navigate to="/orders" replace />} />
                 <Route path="/create-order" element={isManager ? <CreateOrder /> : <Navigate to="/orders" replace />} />
                 <Route path="/users" element={isManager ? <Users /> : <Navigate to="/orders" replace />} />
                 <Route path="/messages" element={<Messages user={user} />} />

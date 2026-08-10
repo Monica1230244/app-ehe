@@ -5,7 +5,8 @@
 3. Démarrer l’API et vérifier `http://localhost:4000/health`.
 4. Démarrer l’interface et vérifier `http://localhost:5173` sur ordinateur et téléphone.
 5. Créer le compte revendeur initial, puis les comptes cordonnier nécessaires.
-6. Créer un client et une commande avec les photos du modèle, du pied gauche et du pied droit.
-7. Vérifier le parcours cordonnier : attente, en fabrication, prête.
-8. Vérifier le parcours revendeur : notification reçue, puis confirmation de livraison.
-9. Conserver le mot de passe PostgreSQL, le `JWT_SECRET` et une sauvegarde régulière du volume Docker dans un emplacement privé.
+6. Ajouter un modèle au stock et créer une commande en le sélectionnant dans la galerie.
+7. Créer une autre commande avec une nouvelle photo de modèle et vérifier que les photos des pieds restent facultatives.
+8. Vérifier le parcours cordonnier : attente, en fabrication, prête.
+9. Vérifier le parcours revendeur : notification reçue, puis confirmation de livraison.
+10. Conserver le mot de passe PostgreSQL, le `JWT_SECRET` et une sauvegarde régulière du volume Docker dans un emplacement privé.

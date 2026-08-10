@@ -46,10 +46,11 @@ Dans l’onglet `Actions` du dépôt, lancez manuellement le workflow `Deploy Su
 3. Confirmez l’email si Supabase le demande, puis reconnectez-vous.
 4. Remettez immédiatement `VITE_ALLOW_PUBLIC_SIGNUP` à `false`, republiez la PWA et désactivez `Allow new users to sign up` dans Supabase.
 5. Depuis `Utilisateurs`, créez au moins un compte cordonnier.
-6. Créez un client puis une commande, choisissez le cordonnier et joignez les trois photos.
-7. Connectez-vous comme cordonnier sur un autre appareil : seules les commandes attribuées apparaissent.
-8. Marquez une commande comme prête puis livrée, envoyez une remarque client dans la conversation et vérifiez sa réception sur le compte cordonnier.
-9. Depuis le compte revendeur, renseignez les deux prix dans `Comptabilité` et vérifiez que le bénéfice total est mis à jour. Cette rubrique ne doit pas apparaître sur le compte cordonnier.
+6. Ajoutez un modèle avec sa photo dans `Stock`, puis créez un client et une commande en sélectionnant ce modèle.
+7. Vérifiez aussi la création d’une commande avec une nouvelle photo de modèle et les photos facultatives des pieds.
+8. Connectez-vous comme cordonnier sur un autre appareil : seules les commandes attribuées et leurs photos doivent apparaître.
+9. Marquez une commande comme prête puis livrée, envoyez une remarque client dans la conversation et vérifiez sa réception sur le compte cordonnier.
+10. Depuis le compte revendeur, renseignez les deux prix dans `Comptabilité` et vérifiez que le bénéfice total est mis à jour. Cette rubrique ne doit pas apparaître sur le compte cordonnier.
 
 ## Installation mobile
 

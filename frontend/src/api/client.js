@@ -67,6 +67,15 @@ async function signedPhoto(photo) {
   return { ...photo, storage_key: photo.storage_path, storage_path: data.signedUrl };
 }
 
+async function signedStockModel(model) {
+  const { data, error } = await supabase.storage
+    .from('modele-photos')
+    .createSignedUrl(model.photo_path, 3600);
+
+  if (error) throw apiError(error, 'Impossible d’ouvrir la photo du modèle.');
+  return { ...model, photo_url: data.signedUrl };
+}
+
 async function get(path, options = {}) {
   ensureConfigured();
   const params = options.params || {};
@@ -105,6 +114,18 @@ async function get(path, options = {}) {
       ? data.filter((client) => `${client.nom} ${client.telephone || ''}`.toLocaleLowerCase('fr').includes(search))
       : data;
     return { data: { clients } };
+  }
+
+  if (path === '/modeles-stock') {
+    let query = supabase
+      .from('modeles_stock')
+      .select('id, revendeur_id, nom, reference, description, photo_path, file_name, is_active, created_at, updated_at')
+      .order('created_at', { ascending: false });
+    if (params.active === true) query = query.eq('is_active', true);
+
+    const { data, error } = await query;
+    if (error) throw apiError(error, 'Impossible de charger la galerie de modèles.');
+    return { data: { modeles: await Promise.all(data.map(signedStockModel)) } };
   }
 
   const clientHistoryMatch = path.match(/^\/clients\/(\d+)\/commandes$/);
@@ -187,7 +208,36 @@ async function get(path, options = {}) {
       .eq('commande_id', Number(params.commande_id))
       .order('created_at');
     if (error) throw apiError(error, 'Impossible de charger les photos.');
-    return { data: { photos: await Promise.all(data.map(signedPhoto)) } };
+    const photos = await Promise.all(data.map(signedPhoto));
+
+    if (!photos.some((photo) => photo.type_photo === 'modele')) {
+      const { data: order, error: orderError } = await supabase
+        .from('commandes')
+        .select('modele_stock_id')
+        .eq('id', Number(params.commande_id))
+        .single();
+      if (orderError) throw apiError(orderError, 'Impossible de retrouver le modèle de la commande.');
+
+      if (order.modele_stock_id) {
+        const { data: stockModel, error: modelError } = await supabase
+          .from('modeles_stock')
+          .select('id, nom, photo_path, file_name')
+          .eq('id', order.modele_stock_id)
+          .single();
+        if (modelError) throw apiError(modelError, 'Impossible de charger le modèle du stock.');
+        const signedModel = await signedStockModel(stockModel);
+        photos.unshift({
+          id: `stock-${signedModel.id}`,
+          commande_id: Number(params.commande_id),
+          type_photo: 'modele',
+          storage_path: signedModel.photo_url,
+          file_name: signedModel.file_name,
+          source: 'stock'
+        });
+      }
+    }
+
+    return { data: { photos } };
   }
 
   if (path === '/notifications') {
@@ -268,10 +318,43 @@ async function post(path, body) {
     return { data: { client: data } };
   }
 
+  if (path === '/modeles-stock') {
+    const file = body.get('file');
+    const nom = String(body.get('nom') || '').trim();
+    const reference = String(body.get('reference') || '').trim();
+    const description = String(body.get('description') || '').trim();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw apiError(authError, 'Session expirée.');
+    if (!file || !nom) throw apiError(null, 'Le nom et la photo du modèle sont obligatoires.');
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const storagePath = `${authData.user.id}/${crypto.randomUUID()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from('modele-photos').upload(storagePath, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false
+    });
+    if (uploadError) throw apiError(uploadError, 'Impossible d’envoyer la photo du modèle.');
+
+    const { data, error } = await supabase.from('modeles_stock').insert({
+      nom,
+      reference: reference || null,
+      description: description || null,
+      photo_path: storagePath,
+      file_name: file.name
+    }).select().single();
+    if (error) {
+      await supabase.storage.from('modele-photos').remove([storagePath]);
+      throw apiError(error, 'Impossible d’enregistrer ce modèle.');
+    }
+    return { data: { modele: await signedStockModel(data) } };
+  }
+
   if (path === '/commandes') {
     const { data, error } = await supabase.from('commandes').insert({
       client_id: Number(body.client_id),
       cordonnier_id: body.cordonnier_id || null,
+      modele_stock_id: body.modele_stock_id ? Number(body.modele_stock_id) : null,
       modele: body.modele,
       pointure: body.pointure,
       couleur: body.couleur,
@@ -344,6 +427,18 @@ async function post(path, body) {
 
 async function patch(path, body = {}) {
   ensureConfigured();
+
+  const stockModelMatch = path.match(/^\/modeles-stock\/(\d+)\/status$/);
+  if (stockModelMatch) {
+    const { data, error } = await supabase
+      .from('modeles_stock')
+      .update({ is_active: Boolean(body.is_active) })
+      .eq('id', Number(stockModelMatch[1]))
+      .select()
+      .single();
+    if (error) throw apiError(error, 'Impossible de modifier ce modèle.');
+    return { data: { modele: await signedStockModel(data) } };
+  }
 
   const statusMatch = path.match(/^\/commandes\/(\d+)\/status$/);
   if (statusMatch) {

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
-import OrderConversation from '../components/OrderConversation';
 
 const statusLabels = { en_attente: 'En attente', en_fabrication: 'En fabrication', prete: 'Prête', livree: 'Livrée', annulee: 'Annulée' };
 
@@ -100,7 +99,6 @@ export default function OrderDetails({ user }) {
           {photos.map((photo) => <figure key={photo.id} className="overflow-hidden rounded border"><img className="aspect-square w-full object-cover" src={photo.storage_path} alt={photo.type_photo.replace('_', ' ')} /><figcaption className="p-2 text-sm capitalize">{photo.type_photo.replace('_', ' ')}</figcaption></figure>)}
         </div>
       </section>
-      <OrderConversation commandeId={commande.id} commandeStatut={commande.statut} user={user} />
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold">Historique</h2>
         <ol className="mt-3 space-y-3 border-l pl-4">

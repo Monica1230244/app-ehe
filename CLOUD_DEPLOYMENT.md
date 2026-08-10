@@ -49,6 +49,7 @@ Dans l’onglet `Actions` du dépôt, lancez manuellement le workflow `Deploy Su
 6. Créez un client puis une commande, choisissez le cordonnier et joignez les trois photos.
 7. Connectez-vous comme cordonnier sur un autre appareil : seules les commandes attribuées apparaissent.
 8. Marquez une commande comme prête puis livrée, envoyez une remarque client dans la conversation et vérifiez sa réception sur le compte cordonnier.
+9. Depuis le compte revendeur, renseignez les deux prix dans `Comptabilité` et vérifiez que le bénéfice total est mis à jour. Cette rubrique ne doit pas apparaître sur le compte cordonnier.
 
 ## Installation mobile
 

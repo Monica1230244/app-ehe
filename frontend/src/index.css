@@ -289,6 +289,45 @@ button:hover:not(:disabled) { transform: translateY(-1px); }
 .messaging-empty h2 { color: var(--navy); font-size: 1.05rem; }
 .messaging-empty p { max-width: 440px; font-size: .8rem; line-height: 1.55; }
 .messaging-empty.compact { min-height: 520px; }
+.accounting-private { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #eadde0; border-radius: 999px; color: var(--primary-dark); background: #fff; font-size: .72rem; font-weight: 800; box-shadow: 0 7px 18px rgba(74,13,24,.06); }
+.accounting-private i { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(25,169,116,.1); }
+.accounting-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.accounting-metric { position: relative; overflow: hidden; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: 0 9px 24px rgba(74,13,24,.055); }
+.accounting-metric::after { position: absolute; right: -18px; bottom: -24px; width: 80px; height: 80px; border-radius: 50%; background: var(--metric-soft); content: ''; }
+.accounting-metric span { position: relative; z-index: 1; display: block; color: var(--muted); font-size: .72rem; font-weight: 750; }
+.accounting-metric strong { position: relative; z-index: 1; display: block; margin-top: 9px; color: var(--metric); font-size: clamp(1.15rem, 2vw, 1.75rem); letter-spacing: -.04em; }
+.accounting-metric.cost { --metric: #8a5c21; --metric-soft: #fff3df; }
+.accounting-metric.sales { --metric: #2d668d; --metric-soft: #e8f4fb; }
+.accounting-metric.profit { --metric: #16805d; --metric-soft: #e7f7f0; }
+.accounting-metric.recorded { --metric: var(--primary); --metric-soft: var(--primary-soft); }
+.accounting-ledger { overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.92); box-shadow: var(--shadow); }
+.accounting-ledger-header { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 21px 22px; border-bottom: 1px solid var(--line); background: linear-gradient(135deg, #fff, #fcf6f7); }
+.accounting-ledger-header h2, .accounting-ledger-header p { margin: 0; }
+.accounting-ledger-header h2 { color: var(--navy); font-size: 1.05rem; }
+.accounting-ledger-header p { margin-top: 5px; color: var(--muted); font-size: .72rem; }
+.accounting-ledger-header input { width: min(100%, 280px); min-height: 43px; padding: 0 13px; border-radius: 12px; background: #fff; }
+.accounting-orders { display: grid; gap: 12px; padding: 14px; }
+.accounting-order-card { display: grid; grid-template-columns: minmax(190px, .85fr) minmax(0, 2fr); gap: 22px; padding: 17px; border: 1px solid #eadde0; border-radius: 17px; background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+.accounting-order-card:hover { border-color: #dcb3bb; box-shadow: 0 9px 24px rgba(74,13,24,.065); }
+.accounting-order-info { display: grid; align-content: center; gap: 6px; }
+.accounting-order-info > div { display: flex; align-items: center; gap: 9px; }
+.accounting-order-info strong { color: var(--navy); font-size: .88rem; }
+.accounting-order-info p, .accounting-order-info small { margin: 0; }
+.accounting-order-info p { font-size: .76rem; font-weight: 700; }
+.accounting-order-info small { color: var(--muted); font-size: .66rem; }
+.accounting-order-form { display: grid; grid-template-columns: repeat(2, minmax(130px, 1fr)) minmax(130px, .9fr) minmax(130px, .8fr); align-items: end; gap: 11px; }
+.accounting-order-form label { display: grid; gap: 7px; color: var(--navy); font-size: .68rem; font-weight: 800; }
+.money-input { display: flex; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.money-input:focus-within { border-color: #b85a69; box-shadow: 0 0 0 3px rgba(139,30,45,.1); }
+.money-input input { min-width: 0; width: 100%; min-height: 43px; border: 0; border-radius: 0; box-shadow: none; }
+.money-input i { display: flex; align-items: center; padding: 0 10px; color: var(--muted); background: #faf5f6; font-size: .58rem; font-style: normal; font-weight: 800; }
+.accounting-profit { display: grid; min-height: 43px; align-content: center; padding: 7px 11px; border-radius: 12px; color: #167356; background: #edf9f4; }
+.accounting-profit.negative { color: var(--danger); background: #fff0f3; }
+.accounting-profit span { font-size: .59rem; font-weight: 750; }
+.accounting-profit strong { font-size: .8rem; }
+.accounting-save { display: grid; gap: 4px; }
+.accounting-save .primary-button { min-height: 43px; padding: 9px 12px; font-size: .7rem; }
+.accounting-save small { min-height: 12px; color: var(--muted); text-align: center; font-size: .58rem; }
 
 /* Existing utility system, upgraded */
 .min-h-screen { min-height: 100vh; }
@@ -438,6 +477,8 @@ small { font-size: .75rem; }
 
 @media (max-width: 1080px) {
   .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .accounting-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .accounting-order-card { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 900px) {
@@ -466,6 +507,9 @@ small { font-size: .75rem; }
   .messaging-list { display: flex; max-height: none; overflow-x: auto; padding: 10px; }
   .messaging-order { min-width: 255px; max-width: 290px; }
   .messaging-panel { padding: 16px; }
+  .accounting-ledger-header { align-items: stretch; flex-direction: column; }
+  .accounting-ledger-header input { width: 100%; }
+  .accounting-order-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 680px) {
@@ -487,6 +531,9 @@ small { font-size: .75rem; }
   .messaging-panel { padding: 12px; }
   .messaging-panel-header { align-items: start; }
   .messaging-panel .order-conversation { padding: 10px; }
+  .accounting-private { align-self: flex-start; }
+  .accounting-summary { grid-template-columns: 1fr; }
+  .accounting-order-form { grid-template-columns: 1fr; }
   .flex.gap-2 { flex-wrap: wrap; }
   .flex.gap-2 > button { width: 100%; }
 }

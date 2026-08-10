@@ -144,6 +144,15 @@ async function get(path, options = {}) {
     return { data: { messages: data } };
   }
 
+  if (path === '/comptabilite') {
+    const { data, error } = await supabase
+      .from('commande_comptabilite')
+      .select('commande_id, revendeur_id, prix_cordonnier, prix_vente, benefice, created_at, updated_at')
+      .order('updated_at', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger la comptabilité.');
+    return { data: { comptabilite: data } };
+  }
+
   const historyMatch = path.match(/^\/commandes\/(\d+)\/history$/);
   if (historyMatch) {
     const { data, error } = await supabase
@@ -290,6 +299,21 @@ async function post(path, body) {
       .single();
     if (error) throw apiError(error, 'Impossible d’envoyer le message.');
     return { data: { message: data } };
+  }
+
+  const accountingMatch = path.match(/^\/commandes\/(\d+)\/comptabilite$/);
+  if (accountingMatch) {
+    const { data, error } = await supabase
+      .from('commande_comptabilite')
+      .upsert({
+        commande_id: Number(accountingMatch[1]),
+        prix_cordonnier: Number(body.prix_cordonnier),
+        prix_vente: Number(body.prix_vente)
+      }, { onConflict: 'commande_id' })
+      .select('commande_id, revendeur_id, prix_cordonnier, prix_vente, benefice, created_at, updated_at')
+      .single();
+    if (error) throw apiError(error, 'Impossible d’enregistrer les montants de cette commande.');
+    return { data: { comptabilite: data } };
   }
 
   if (path === '/upload') {

@@ -9,6 +9,20 @@ function dateLabel(value) {
   return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
 }
 
+function whatsappNumber(value) {
+  const rawValue = String(value || '').trim();
+  let digits = rawValue.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (!digits || rawValue.startsWith('+') || digits.startsWith('229')) return digits;
+  return `229${digits}`;
+}
+
+function whatsappLink(commande) {
+  const number = whatsappNumber(commande.client_telephone);
+  const message = `Bonjour ${commande.client_nom}, votre commande ${commande.numero_commande} est prête. Pour organiser la livraison, merci de nous envoyer vos informations de livraison ici, en message privé sur WhatsApp. — EHE`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
+
 export default function OrderDetails({ user }) {
   const { id } = useParams();
   const [commande, setCommande] = useState(null);
@@ -58,6 +72,7 @@ export default function OrderDetails({ user }) {
   if (user.role === 'cordonnier' && commande.statut === 'en_fabrication') actions.push(['prete', 'Marquer comme prête', 'bg-emerald-700']);
   if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete') actions.push(['livree', 'Confirmer la livraison', 'bg-slate-900']);
   if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente') actions.push(['annulee', 'Annuler la commande', 'bg-red-700']);
+  const canNotifyClient = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete' && whatsappNumber(commande.client_telephone);
 
   return (
     <div className="page-shell max-w-4xl space-y-5">
@@ -71,7 +86,12 @@ export default function OrderDetails({ user }) {
         <dl className="mt-5 grid gap-4 sm:grid-cols-2">
           {[['Modèle', commande.modele], ['Pointure', commande.pointure], ['Couleur', commande.couleur], ['Matière', commande.matiere], ['Semelle', commande.semelle], ['Quantité', commande.quantite], ['Date souhaitée', commande.date_souhaitee || '—'], ['Observations', commande.observations || '—']].map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd className="font-medium">{value}</dd></div>)}
         </dl>
-        {actions.length > 0 && <div className="mt-5 flex flex-wrap gap-3">{actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}</div>}
+        {(actions.length > 0 || canNotifyClient) && (
+          <div className="mt-5 flex flex-wrap gap-3">
+            {actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}
+            {canNotifyClient && <a className="whatsapp-button" href={whatsappLink(commande)} target="_blank" rel="noreferrer">Informer le client sur WhatsApp</a>}
+          </div>
+        )}
       </section>
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold">Photos de fabrication</h2>

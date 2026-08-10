@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 
-const emptyForm = { nom: '', telephone: '', email: '', notes: '' };
+const emptyForm = { nom: '', telephone: '' };
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
@@ -52,8 +52,6 @@ export default function Clients() {
         <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={submitClient}>
           <input className="rounded border px-3 py-2" placeholder="Nom complet" value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} required />
           <input className="rounded border px-3 py-2" placeholder="Téléphone" value={form.telephone} onChange={(event) => setForm({ ...form, telephone: event.target.value })} required />
-          <input className="rounded border px-3 py-2" type="email" placeholder="Email (facultatif)" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-          <input className="rounded border px-3 py-2" placeholder="Notes (facultatif)" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
           <button className="rounded bg-blue-700 px-4 py-2 font-medium text-white md:col-span-2">Enregistrer le client</button>
         </form>
       </section>
@@ -70,7 +68,6 @@ export default function Clients() {
               <div>
                 <h2 className="font-semibold">{client.nom}</h2>
                 <p className="text-sm text-slate-600">{client.telephone}</p>
-                {client.email && <p className="text-sm text-slate-600">{client.email}</p>}
               </div>
               <button type="button" onClick={() => showHistory(client.id)} className="rounded border border-blue-700 px-3 py-2 text-sm font-medium text-blue-700">Historique</button>
               {history.clientId === client.id && (

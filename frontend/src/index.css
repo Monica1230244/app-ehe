@@ -256,6 +256,9 @@ button:hover:not(:disabled) { transform: translateY(-1px); }
 .conversation-form small { color: var(--muted); }
 .conversation-form .primary-button { width: auto; min-width: 138px; padding: 11px 18px; }
 .conversation-error { margin: 12px 0 0; color: var(--danger); font-size: .76rem; }
+.optional-field { margin-left: 5px; color: var(--muted); font-size: .62rem; font-weight: 650; }
+.whatsapp-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 9px 15px; border-radius: 8px; color: #fff; background: #1f9d61; font-size: .82rem; font-weight: 750; box-shadow: 0 9px 20px rgba(31,157,97,.2); transition: background .2s ease, transform .2s ease; }
+.whatsapp-button:hover { transform: translateY(-1px); background: #16814d; }
 .messaging-security { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #eadde0; border-radius: 999px; color: var(--primary-dark); background: #fff; font-size: .72rem; font-weight: 800; box-shadow: 0 7px 18px rgba(74,13,24,.06); }
 .messaging-security i { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(25,169,116,.1); }
 .messaging-layout { display: grid; min-height: 650px; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: var(--shadow); }

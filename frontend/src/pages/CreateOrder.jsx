@@ -59,8 +59,8 @@ export default function CreateOrder() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (Object.values(photos).some((photo) => !photo)) {
-      setMessage('Ajoutez la photo du modèle et les photos des deux pieds.');
+    if (!photos.modele) {
+      setMessage('Ajoutez la photo du modèle. Les photos des pieds sont facultatives.');
       return;
     }
 
@@ -73,7 +73,9 @@ export default function CreateOrder() {
         quantite: Number(form.quantite)
       });
       const commande = response.data.commande;
-      await Promise.all(Object.entries(photos).map(([typePhoto, file]) => uploadPhoto(commande.id, typePhoto, file)));
+      await Promise.all(Object.entries(photos)
+        .filter(([, file]) => file)
+        .map(([typePhoto, file]) => uploadPhoto(commande.id, typePhoto, file)));
       navigate(`/orders/${commande.id}`);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible de créer la commande.');
@@ -84,7 +86,7 @@ export default function CreateOrder() {
 
   return (
     <div className="page-shell max-w-3xl">
-      <div className="page-header"><div><h1>Nouvelle commande</h1><p>Renseignez le modèle, les mesures et les photos nécessaires à la fabrication.</p></div></div>
+      <div className="page-header"><div><h1>Nouvelle commande</h1><p>Renseignez le modèle et les mesures. Les photos des pieds sont facultatives.</p></div></div>
       <form className="mt-5 space-y-4 rounded-xl border bg-white p-5 shadow-sm" onSubmit={handleSubmit}>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium">Client
@@ -109,8 +111,11 @@ export default function CreateOrder() {
         </div>
         <label className="grid gap-1 text-sm font-medium">Observations<textarea name="observations" className="rounded border px-3 py-2 font-normal" value={form.observations} onChange={updateForm} /></label>
         <div className="grid gap-4 md:grid-cols-3">
-          {[['modele', 'Photo du modèle'], ['pied_gauche', 'Photo du pied gauche'], ['pied_droit', 'Photo du pied droit']].map(([key, label]) => (
-            <label key={key} className="grid gap-1 text-sm font-medium">{label}<input type="file" accept="image/jpeg,image/png,image/webp" className="font-normal" onChange={(event) => setPhotos({ ...photos, [key]: event.target.files?.[0] || null })} required /></label>
+          {[['modele', 'Photo du modèle', true], ['pied_gauche', 'Photo du pied gauche', false], ['pied_droit', 'Photo du pied droit', false]].map(([key, label, required]) => (
+            <label key={key} className="grid gap-1 text-sm font-medium">
+              <span>{label}{!required && <small className="optional-field"> Facultative</small>}</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="font-normal" onChange={(event) => setPhotos({ ...photos, [key]: event.target.files?.[0] || null })} required={required} />
+            </label>
           ))}
         </div>
         <button disabled={isSubmitting} className="rounded bg-blue-700 px-4 py-2 font-medium text-white disabled:opacity-60">{isSubmitting ? 'Création en cours…' : 'Créer la commande'}</button>

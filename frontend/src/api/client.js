@@ -262,9 +262,7 @@ async function post(path, body) {
   if (path === '/clients') {
     const { data, error } = await supabase.from('clients').insert({
       nom: body.nom,
-      telephone: body.telephone,
-      email: body.email || null,
-      notes: body.notes || null
+      telephone: body.telephone
     }).select().single();
     if (error) throw apiError(error, 'Impossible d’enregistrer le client.');
     return { data: { client: data } };

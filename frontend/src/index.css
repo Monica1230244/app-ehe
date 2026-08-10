@@ -161,19 +161,25 @@ button:hover:not(:disabled) { transform: translateY(-1px); }
   inset: 0 auto 0 0;
   display: flex;
   width: 260px;
+  min-height: 0;
   flex-direction: column;
+  overflow: hidden;
   padding: 30px 22px 22px;
   color: #fff;
   background: linear-gradient(180deg, #4a0d18 0%, #641523 65%, #3d0912 100%);
   box-shadow: 18px 0 55px rgba(74, 13, 24, .13);
 }
 .sidebar-section-label { margin: 50px 12px 14px; color: rgba(255,255,255,.38); font-size: .66rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-.sidebar-navigation { display: grid; gap: 7px; }
+.sidebar-navigation { display: grid; min-height: 0; flex: 1 1 auto; align-content: start; gap: 7px; overflow-y: auto; overscroll-behavior: contain; padding: 0 5px 12px 0; scrollbar-color: rgba(255,255,255,.28) transparent; scrollbar-width: thin; }
+.sidebar-navigation::-webkit-scrollbar { width: 6px; }
+.sidebar-navigation::-webkit-scrollbar-track { background: transparent; }
+.sidebar-navigation::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(255,255,255,.28); }
+.sidebar-navigation::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.42); }
 .nav-link { display: flex; align-items: center; gap: 13px; min-height: 48px; padding: 0 14px; border-radius: 13px; color: rgba(255,255,255,.62); font-size: .88rem; font-weight: 650; transition: color .2s ease, background .2s ease, transform .2s ease; }
 .nav-link svg { width: 20px; height: 20px; flex: 0 0 20px; fill: currentColor; }
 .nav-link:hover { color: #fff; background: rgba(255,255,255,.06); transform: translateX(2px); }
 .nav-link.active { color: #fff; background: linear-gradient(135deg, rgba(155,40,57,.96), rgba(104,19,33,.96)); box-shadow: 0 10px 24px rgba(45, 5, 13, .28); }
-.sidebar-user { display: grid; grid-template-columns: 40px minmax(0, 1fr) 28px; align-items: center; gap: 10px; margin-top: auto; padding: 14px 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(255,255,255,.05); }
+.sidebar-user { display: grid; grid-template-columns: 40px minmax(0, 1fr) 28px; align-items: center; flex: 0 0 auto; gap: 10px; margin-top: 12px; padding: 14px 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(255,255,255,.05); }
 .user-avatar { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; color: var(--navy); background: linear-gradient(145deg, #fff, #f3ccd3); font-weight: 900; }
 .sidebar-user > span:nth-child(2) { display: grid; min-width: 0; }
 .sidebar-user strong { overflow: hidden; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -601,9 +607,9 @@ small { font-size: .75rem; }
   .auth-card { padding: 28px; border: 1px solid rgba(225,229,238,.9); border-radius: 22px; background: rgba(255,255,255,.92); box-shadow: var(--shadow); }
   .app-sidebar { display: none; }
   .app-main { margin-left: 0; padding-bottom: 86px; }
-  .mobile-navigation { position: fixed; z-index: 40; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 4px; overflow-x: auto; padding: 7px; border: 1px solid rgba(234,221,224,.92); border-radius: 19px; background: rgba(74,13,24,.97); box-shadow: 0 18px 45px rgba(74,13,24,.26); backdrop-filter: blur(16px); scrollbar-width: none; }
+  .mobile-navigation { position: fixed; z-index: 40; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain; padding: 7px; border: 1px solid rgba(234,221,224,.92); border-radius: 19px; background: rgba(74,13,24,.97); box-shadow: 0 18px 45px rgba(74,13,24,.26); backdrop-filter: blur(16px); scrollbar-width: none; scroll-snap-type: x proximity; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
   .mobile-navigation::-webkit-scrollbar { display: none; }
-  .mobile-navigation .nav-link { min-width: 68px; height: 56px; flex: 1 0 auto; flex-direction: column; justify-content: center; gap: 4px; padding: 4px 8px; border-radius: 13px; font-size: .61rem; }
+  .mobile-navigation .nav-link { min-width: 68px; height: 56px; flex: 1 0 auto; flex-direction: column; justify-content: center; gap: 4px; padding: 4px 8px; border-radius: 13px; font-size: .61rem; scroll-snap-align: start; }
   .mobile-navigation .nav-link svg { width: 19px; height: 19px; }
   .mobile-navigation .nav-link:hover { transform: none; }
   .app-topbar { min-height: 76px; padding: 15px 20px; }

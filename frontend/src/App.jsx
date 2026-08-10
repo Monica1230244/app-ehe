@@ -126,7 +126,7 @@ function App() {
   return (
     <HashRouter>
       <InstallAppButton />
-      <NotificationToast message={realtimeNotifications[0]?.message} />
+      <NotificationToast notification={realtimeNotifications[0]} />
       {user ? (
         <div className="app-shell">
           <aside className="app-sidebar">

@@ -48,6 +48,7 @@ Dans l’onglet `Actions` du dépôt, lancez manuellement le workflow `Deploy Su
 5. Depuis `Utilisateurs`, créez au moins un compte cordonnier.
 6. Créez un client puis une commande, choisissez le cordonnier et joignez les trois photos.
 7. Connectez-vous comme cordonnier sur un autre appareil : seules les commandes attribuées apparaissent.
+8. Marquez une commande comme prête puis livrée, envoyez une remarque client dans la conversation et vérifiez sa réception sur le compte cordonnier.
 
 ## Installation mobile
 

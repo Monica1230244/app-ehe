@@ -15,7 +15,7 @@ Application PWA de gestion de fabrication de chaussures sur mesure. Elle permet 
 - gestion des clients, de leur historique et des commandes ;
 - commande avec modèle, mesures, photos des deux pieds et attribution d’un cordonnier ;
 - suivi contrôlé : attente, fabrication, prête, livrée ou annulée ;
-- notifications lorsque le cordonnier marque une commande comme prête ;
+- conversation sécurisée par commande entre revendeur et cordonnier, avec notifications en temps réel ;
 - recherche, filtres et historique de statut ;
 - interface PWA adaptée au mobile.
 

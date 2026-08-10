@@ -143,6 +143,17 @@ async function get(path, options = {}) {
     return { data: { history: data } };
   }
 
+  const messagesMatch = path.match(/^\/commandes\/(\d+)\/messages$/);
+  if (messagesMatch) {
+    const { data, error } = await supabase
+      .from('commande_messages')
+      .select('id, commande_id, auteur_id, auteur_nom, auteur_role, contenu, created_at')
+      .eq('commande_id', Number(messagesMatch[1]))
+      .order('created_at');
+    if (error) throw apiError(error, 'Impossible de charger la conversation.');
+    return { data: { messages: data } };
+  }
+
   const commandeMatch = path.match(/^\/commandes\/(\d+)$/);
   if (commandeMatch) {
     return { data: { commande: await getCommande(commandeMatch[1]) } };
@@ -253,6 +264,20 @@ async function post(path, body) {
     }).select().single();
     if (error) throw apiError(error, 'Impossible de créer la commande.');
     return { data: { commande: data } };
+  }
+
+  const messageMatch = path.match(/^\/commandes\/(\d+)\/messages$/);
+  if (messageMatch) {
+    const { data, error } = await supabase
+      .from('commande_messages')
+      .insert({
+        commande_id: Number(messageMatch[1]),
+        contenu: body.contenu
+      })
+      .select('id, commande_id, auteur_id, auteur_nom, auteur_role, contenu, created_at')
+      .single();
+    if (error) throw apiError(error, 'Impossible d’envoyer le message.');
+    return { data: { message: data } };
   }
 
   if (path === '/upload') {

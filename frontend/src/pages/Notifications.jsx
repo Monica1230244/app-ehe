@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
 
 export default function Notifications({ realtimeNotifications }) {
@@ -32,6 +33,7 @@ export default function Notifications({ realtimeNotifications }) {
           <div key={`${notification.id}-${notification.created_at}`} className={`notification-card${notification.lu ? '' : ' unread'}`}>
             <div className="text-sm">{notification.message}</div>
             <div className="text-xs text-gray-500">{notification.created_at}</div>
+            {notification.commande_id && <Link className="mt-2 inline-block text-xs font-medium text-blue-700" to={`/orders/${notification.commande_id}`}>Ouvrir la commande →</Link>}
             {!notification.lu && <button type="button" onClick={() => markAsRead(notification.id)} className="mt-2 text-xs font-medium text-blue-700">Marquer comme lue</button>}
           </div>
         ))}

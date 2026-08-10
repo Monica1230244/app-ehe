@@ -10,6 +10,7 @@ import Clients from './pages/Clients';
 import Users from './pages/Users';
 import Messages from './pages/Messages';
 import Accounting from './pages/Accounting';
+import Statistics from './pages/Statistics';
 import Notifications from './pages/Notifications';
 import useNotifications from './hooks/useNotifications';
 import NotificationToast from './components/NotificationToast';
@@ -38,6 +39,7 @@ function NavIcon({ name }) {
     users: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14Z',
     messages: 'M4 4h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 5v2h12V9H6Zm0 4v2h8v-2H6Z',
     accounting: 'M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 4v2h12V7H6Zm0 4v2h5v-2H6Zm8 0v6h4v-6h-4ZM6 15v2h5v-2H6Z',
+    statistics: 'M4 19h16v2H2V3h2v16Zm3-2H5v-6h2v6Zm4 0H9V7h2v10Zm4 0h-2V9h2v8Zm4 0h-2V4h2v13Z',
     notifications: 'M12 22a2.5 2.5 0 0 0 2.4-2h-4.8a2.5 2.5 0 0 0 2.4 2Zm7-6-2-2v-4a5 5 0 0 0-4-4.9V3h-2v2.1A5 5 0 0 0 7 10v4l-2 2v2h14v-2Z'
   };
 
@@ -116,6 +118,7 @@ function App() {
     ] : []),
     { to: '/messages', label: 'Messagerie', icon: 'messages' },
     ...(isManager ? [{ to: '/accounting', label: 'Comptabilité', icon: 'accounting' }] : []),
+    ...(isManager ? [{ to: '/statistics', label: 'Statistiques', icon: 'statistics' }] : []),
     { to: '/notifications', label: 'Alertes', icon: 'notifications' }
   ] : [];
 
@@ -167,6 +170,7 @@ function App() {
                 <Route path="/users" element={isManager ? <Users /> : <Navigate to="/orders" replace />} />
                 <Route path="/messages" element={<Messages user={user} />} />
                 <Route path="/accounting" element={isManager ? <Accounting /> : <Navigate to="/orders" replace />} />
+                <Route path="/statistics" element={isManager ? <Statistics /> : <Navigate to="/orders" replace />} />
                 <Route path="/notifications" element={<Notifications realtimeNotifications={realtimeNotifications} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

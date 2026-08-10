@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
+import { sendPushForOrder } from '../services/pushNotifications';
 
 const emptyForm = {
   client_id: '',
@@ -97,6 +98,7 @@ export default function CreateOrder() {
       await Promise.all(Object.entries(photos)
         .filter(([, file]) => file)
         .map(([typePhoto, file]) => uploadPhoto(commande.id, typePhoto, file)));
+      await sendPushForOrder(commande.id, 'order_created');
       navigate(`/orders/${commande.id}`);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible de créer la commande.');

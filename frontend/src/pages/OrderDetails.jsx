@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
+import { sendPushForOrder } from '../services/pushNotifications';
 
 const statusLabels = { en_attente: 'En attente', en_fabrication: 'En fabrication', prete: 'Prête', livree: 'Livrée', annulee: 'Annulée' };
 
@@ -22,6 +23,22 @@ function whatsappLink(commande) {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
+function editableOrder(commande) {
+  return {
+    client_id: String(commande.client_id),
+    cordonnier_id: commande.cordonnier_id || '',
+    modele_stock_id: commande.modele_stock_id ? String(commande.modele_stock_id) : '',
+    modele: commande.modele,
+    pointure: commande.pointure,
+    couleur: commande.couleur,
+    matiere: commande.matiere,
+    semelle: commande.semelle,
+    quantite: String(commande.quantite),
+    date_souhaitee: commande.date_souhaitee || '',
+    observations: commande.observations || ''
+  };
+}
+
 export default function OrderDetails({ user }) {
   const { id } = useParams();
   const [commande, setCommande] = useState(null);
@@ -29,6 +46,11 @@ export default function OrderDetails({ user }) {
   const [history, setHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [cordonniers, setCordonniers] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   async function loadOrder() {
     setLoading(true);
@@ -57,9 +79,42 @@ export default function OrderDetails({ user }) {
       const response = await api.patch(`/commandes/${id}/status`, { statut });
       setCommande(response.data.commande);
       setMessage('Statut mis à jour.');
+      await sendPushForOrder(id, 'status_changed');
       await loadOrder();
     } catch (error) {
       setMessage(error.response?.data?.error || 'Cette mise à jour est impossible.');
+    }
+  }
+
+  async function startEditing() {
+    setMessage('');
+    try {
+      const [clientsResponse, cordonniersResponse] = await Promise.all([
+        api.get('/clients'),
+        api.get('/auth/cordonniers')
+      ]);
+      setClients(clientsResponse.data.clients);
+      setCordonniers(cordonniersResponse.data.cordonniers);
+      setEditForm(editableOrder(commande));
+      setEditing(true);
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible d’ouvrir la correction de la commande.');
+    }
+  }
+
+  async function saveOrder(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await api.patch(`/commandes/${id}`, editForm);
+      setCommande(response.data.commande);
+      setEditing(false);
+      setMessage('Commande corrigée.');
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de corriger cette commande.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -72,6 +127,7 @@ export default function OrderDetails({ user }) {
   if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete') actions.push(['livree', 'Confirmer la livraison', 'bg-slate-900']);
   if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente') actions.push(['annulee', 'Annuler la commande', 'bg-red-700']);
   const canNotifyClient = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete' && whatsappNumber(commande.client_telephone);
+  const canEdit = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente';
 
   return (
     <div className="page-shell max-w-4xl space-y-5">
@@ -82,11 +138,31 @@ export default function OrderDetails({ user }) {
           <span className="rounded bg-slate-100 px-3 py-2 text-sm">Créée le {dateLabel(commande.date_creation)}</span>
         </div>
         {user.role !== 'cordonnier' && commande.client_nom && <div className="mt-4 rounded bg-slate-50 p-3 text-sm"><strong>Client :</strong> {commande.client_nom} — {commande.client_telephone}</div>}
-        <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-          {[['Modèle', commande.modele], ['Pointure', commande.pointure], ['Couleur', commande.couleur], ['Matière', commande.matiere], ['Semelle', commande.semelle], ['Quantité', commande.quantite], ['Date souhaitée', commande.date_souhaitee || '—'], ['Observations', commande.observations || '—']].map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd className="font-medium">{value}</dd></div>)}
-        </dl>
-        {(actions.length > 0 || canNotifyClient) && (
+        {editing ? (
+          <form className="order-edit-form" onSubmit={saveOrder}>
+            <label>Client<select value={editForm.client_id} onChange={(event) => setEditForm({ ...editForm, client_id: event.target.value })} required>{clients.map((client) => <option key={client.id} value={client.id}>{client.nom} — {client.telephone}</option>)}</select></label>
+            <label>Cordonnier<select value={editForm.cordonnier_id} onChange={(event) => setEditForm({ ...editForm, cordonnier_id: event.target.value })} required>{cordonniers.map((cordonnier) => <option key={cordonnier.id} value={cordonnier.id}>{cordonnier.nom}</option>)}</select></label>
+            <label>Modèle<input value={editForm.modele} onChange={(event) => setEditForm({ ...editForm, modele: event.target.value })} required /></label>
+            <label>Pointure<input value={editForm.pointure} onChange={(event) => setEditForm({ ...editForm, pointure: event.target.value })} required /></label>
+            <label>Couleur<input value={editForm.couleur} onChange={(event) => setEditForm({ ...editForm, couleur: event.target.value })} required /></label>
+            <label>Matière<input value={editForm.matiere} onChange={(event) => setEditForm({ ...editForm, matiere: event.target.value })} required /></label>
+            <label>Semelle<input value={editForm.semelle} onChange={(event) => setEditForm({ ...editForm, semelle: event.target.value })} required /></label>
+            <label>Quantité<input type="number" min="1" value={editForm.quantite} onChange={(event) => setEditForm({ ...editForm, quantite: event.target.value })} required /></label>
+            <label>Date souhaitée<input type="date" value={editForm.date_souhaitee} onChange={(event) => setEditForm({ ...editForm, date_souhaitee: event.target.value })} /></label>
+            <label className="order-edit-notes">Observations<textarea value={editForm.observations} onChange={(event) => setEditForm({ ...editForm, observations: event.target.value })} /></label>
+            <div className="record-actions order-edit-actions">
+              <button type="submit" className="primary-button compact" disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+              <button type="button" className="secondary-button" onClick={() => setEditing(false)}>Annuler</button>
+            </div>
+          </form>
+        ) : (
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+            {[['Modèle', commande.modele], ['Pointure', commande.pointure], ['Couleur', commande.couleur], ['Matière', commande.matiere], ['Semelle', commande.semelle], ['Quantité', commande.quantite], ['Date souhaitée', commande.date_souhaitee || '—'], ['Observations', commande.observations || '—']].map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd className="font-medium">{value}</dd></div>)}
+          </dl>
+        )}
+        {(actions.length > 0 || canNotifyClient || canEdit) && !editing && (
           <div className="mt-5 flex flex-wrap gap-3">
+            {canEdit && <button type="button" onClick={startEditing} className="secondary-button accent">Corriger la commande</button>}
             {actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}
             {canNotifyClient && <a className="whatsapp-button" href={whatsappLink(commande)} target="_blank" rel="noreferrer">Informer le client sur WhatsApp</a>}
           </div>

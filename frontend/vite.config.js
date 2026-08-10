@@ -11,7 +11,8 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
-        skipWaiting: true
+        skipWaiting: true,
+        importScripts: ['push-sw.js']
       },
       manifest: {
         name: 'EHE ERP',

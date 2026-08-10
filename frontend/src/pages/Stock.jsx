@@ -14,6 +14,8 @@ export default function Stock() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [editingModelId, setEditingModelId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
   const fileInput = useRef(null);
 
   useEffect(() => {
@@ -89,6 +91,32 @@ export default function Stock() {
     }
   }
 
+  function startEditing(modele) {
+    setEditingModelId(modele.id);
+    setEditForm({
+      nom: modele.nom,
+      reference: modele.reference || '',
+      description: modele.description || ''
+    });
+    setMessage('');
+  }
+
+  async function saveModel(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await api.patch(`/modeles-stock/${editingModelId}`, editForm);
+      setModeles((current) => current.map((modele) => modele.id === editingModelId ? response.data.modele : modele));
+      setEditingModelId(null);
+      setMessage('Modèle corrigé.');
+    } catch (requestError) {
+      setMessage(requestError.response?.data?.error || 'Impossible de modifier ce modèle.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="page-shell space-y-6">
       <div className="page-header">
@@ -146,12 +174,27 @@ export default function Stock() {
                   <span>{modele.is_active ? 'Disponible' : 'Archivé'}</span>
                 </div>
                 <div className="stock-model-body">
-                  <div><h3>{modele.nom}</h3>{modele.reference && <small>{modele.reference}</small>}</div>
-                  <p>{modele.description || 'Aucune description ajoutée.'}</p>
-                  <div className="stock-model-actions">
-                    {modele.is_active && <Link className="stock-use-button" to={`/create-order?modele=${modele.id}`}>Utiliser pour une commande</Link>}
-                    <button type="button" onClick={() => toggleModel(modele)}>{modele.is_active ? 'Archiver' : 'Réactiver'}</button>
-                  </div>
+                  {editingModelId === modele.id ? (
+                    <form className="stock-edit-form" onSubmit={saveModel}>
+                      <input aria-label="Nom du modèle" value={editForm.nom} onChange={(event) => setEditForm({ ...editForm, nom: event.target.value })} maxLength="120" required />
+                      <input aria-label="Référence du modèle" value={editForm.reference} onChange={(event) => setEditForm({ ...editForm, reference: event.target.value })} maxLength="60" placeholder="Référence facultative" />
+                      <textarea aria-label="Description du modèle" value={editForm.description} onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} maxLength="1000" placeholder="Description facultative" />
+                      <div className="record-actions">
+                        <button type="submit" className="primary-button compact" disabled={saving}>Enregistrer</button>
+                        <button type="button" className="secondary-button" onClick={() => setEditingModelId(null)}>Annuler</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div><h3>{modele.nom}</h3>{modele.reference && <small>{modele.reference}</small>}</div>
+                      <p>{modele.description || 'Aucune description ajoutée.'}</p>
+                      <div className="stock-model-actions">
+                        {modele.is_active && <Link className="stock-use-button" to={`/create-order?modele=${modele.id}`}>Utiliser pour une commande</Link>}
+                        <button type="button" onClick={() => startEditing(modele)}>Corriger</button>
+                        <button type="button" onClick={() => toggleModel(modele)}>{modele.is_active ? 'Archiver' : 'Réactiver'}</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </article>
             ))}

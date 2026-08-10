@@ -9,6 +9,8 @@ export default function Clients() {
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState({ clientId: null, commandes: [] });
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
 
   async function loadClients(query = search) {
     try {
@@ -44,6 +46,24 @@ export default function Clients() {
     }
   }
 
+  function startEditing(client) {
+    setEditingClientId(client.id);
+    setEditForm({ nom: client.nom, telephone: client.telephone });
+    setMessage('');
+  }
+
+  async function saveClient(event) {
+    event.preventDefault();
+    try {
+      const response = await api.patch(`/clients/${editingClientId}`, editForm);
+      setClients((current) => current.map((client) => client.id === editingClientId ? response.data.client : client));
+      setEditingClientId(null);
+      setMessage('Informations du client corrigées.');
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de modifier ce client.');
+    }
+  }
+
   return (
     <div className="page-shell space-y-6">
       <div className="page-header"><div><h1>Clients</h1><p>Centralisez les coordonnées et l’historique de chaque client.</p></div></div>
@@ -65,11 +85,27 @@ export default function Clients() {
           {clients.length === 0 && <p className="py-3 text-slate-600">Aucun client trouvé.</p>}
           {clients.map((client) => (
             <article key={client.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <div>
-                <h2 className="font-semibold">{client.nom}</h2>
-                <p className="text-sm text-slate-600">{client.telephone}</p>
-              </div>
-              <button type="button" onClick={() => showHistory(client.id)} className="rounded border border-blue-700 px-3 py-2 text-sm font-medium text-blue-700">Historique</button>
+              {editingClientId === client.id ? (
+                <form className="inline-edit-form" onSubmit={saveClient}>
+                  <input aria-label="Nom du client" value={editForm.nom} onChange={(event) => setEditForm({ ...editForm, nom: event.target.value })} required />
+                  <input aria-label="Téléphone du client" value={editForm.telephone} onChange={(event) => setEditForm({ ...editForm, telephone: event.target.value })} required />
+                  <div className="record-actions">
+                    <button type="submit" className="primary-button compact">Enregistrer</button>
+                    <button type="button" className="secondary-button" onClick={() => setEditingClientId(null)}>Annuler</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div>
+                    <h2 className="font-semibold">{client.nom}</h2>
+                    <p className="text-sm text-slate-600">{client.telephone}</p>
+                  </div>
+                  <div className="record-actions">
+                    <button type="button" onClick={() => startEditing(client)} className="secondary-button">Corriger</button>
+                    <button type="button" onClick={() => showHistory(client.id)} className="secondary-button accent">Historique</button>
+                  </div>
+                </>
+              )}
               {history.clientId === client.id && (
                 <div className="w-full rounded bg-slate-50 p-3 text-sm">
                   {history.commandes.length === 0 ? 'Aucune commande pour ce client.' : history.commandes.map((commande) => <p key={commande.id}>{commande.numero_commande} — {commande.statut}</p>)}

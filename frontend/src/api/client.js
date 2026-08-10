@@ -428,6 +428,53 @@ async function post(path, body) {
 async function patch(path, body = {}) {
   ensureConfigured();
 
+  const userMatch = path.match(/^\/auth\/users\/([0-9a-f-]+)$/i);
+  if (userMatch) {
+    const { data, error } = await supabase.functions.invoke('update-user', {
+      body: { ...body, userId: userMatch[1] }
+    });
+    if (error || data?.error) throw apiError(error || { message: data.error }, 'Impossible de modifier ce compte.');
+    return { data };
+  }
+
+  const clientMatch = path.match(/^\/clients\/(\d+)$/);
+  if (clientMatch) {
+    const { data, error } = await supabase
+      .from('clients')
+      .update({ nom: String(body.nom || '').trim(), telephone: String(body.telephone || '').trim() })
+      .eq('id', Number(clientMatch[1]))
+      .select()
+      .single();
+    if (error) throw apiError(error, 'Impossible de modifier ce client.');
+    return { data: { client: data } };
+  }
+
+  const stockModelDetailsMatch = path.match(/^\/modeles-stock\/(\d+)$/);
+  if (stockModelDetailsMatch) {
+    const { data, error } = await supabase
+      .from('modeles_stock')
+      .update({
+        nom: String(body.nom || '').trim(),
+        reference: String(body.reference || '').trim() || null,
+        description: String(body.description || '').trim() || null
+      })
+      .eq('id', Number(stockModelDetailsMatch[1]))
+      .select()
+      .single();
+    if (error) throw apiError(error, 'Impossible de modifier ce modèle.');
+    return { data: { modele: await signedStockModel(data) } };
+  }
+
+  const commandeMatch = path.match(/^\/commandes\/(\d+)$/);
+  if (commandeMatch) {
+    const { error } = await supabase.rpc('update_commande_details', {
+      p_commande_id: Number(commandeMatch[1]),
+      p_details: body
+    });
+    if (error) throw apiError(error, 'Impossible de corriger cette commande.');
+    return { data: { commande: await getCommande(commandeMatch[1]) } };
+  }
+
   const stockModelMatch = path.match(/^\/modeles-stock\/(\d+)\/status$/);
   if (stockModelMatch) {
     const { data, error } = await supabase

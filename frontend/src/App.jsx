@@ -19,6 +19,7 @@ import InstallAppButton from './components/InstallAppButton';
 import Brand from './components/Brand';
 import api from './api/client';
 import { isSupabaseConfigured, supabase } from './api/supabase';
+import { disablePushNotifications } from './services/pushNotifications';
 
 const allowPublicSignup = import.meta.env.VITE_ALLOW_PUBLIC_SIGNUP === 'true';
 
@@ -29,6 +30,12 @@ function getStoredUser() {
   } catch {
     return null;
   }
+}
+
+function getInitialTheme() {
+  const storedTheme = localStorage.getItem('ehe_theme');
+  if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function NavIcon({ name }) {
@@ -51,6 +58,7 @@ function NavIcon({ name }) {
 function App() {
   const [user, setUser] = useState(getStoredUser);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [theme, setTheme] = useState(getInitialTheme);
   const realtimeNotifications = useNotifications(user);
   const isManager = user && ['revendeur', 'admin'].includes(user.role);
 
@@ -58,6 +66,11 @@ function App() {
     localStorage.setItem('ehe_user', JSON.stringify(currentUser));
     setUser(currentUser);
   }
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('ehe_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
@@ -90,6 +103,7 @@ function App() {
   }, []);
 
   async function handleLogout() {
+    await disablePushNotifications().catch(() => undefined);
     await api.logout();
     localStorage.removeItem('ehe_token');
     localStorage.removeItem('ehe_user');
@@ -157,6 +171,15 @@ function App() {
               </div>
               <div className="topbar-actions">
                 <span className="online-status"><i /> Données synchronisées</span>
+                <button
+                  type="button"
+                  className="theme-toggle"
+                  onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                  aria-label={theme === 'dark' ? 'Activer le mode clair' : 'Activer le mode sombre'}
+                  title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+                >
+                  <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
+                </button>
                 <button type="button" className="mobile-logout-button" onClick={handleLogout} aria-label="Se déconnecter">
                   <span aria-hidden="true">↗</span>
                   Quitter
@@ -171,7 +194,7 @@ function App() {
                 <Route path="/clients" element={isManager ? <Clients /> : <Navigate to="/orders" replace />} />
                 <Route path="/stock" element={isManager ? <Stock /> : <Navigate to="/orders" replace />} />
                 <Route path="/create-order" element={isManager ? <CreateOrder /> : <Navigate to="/orders" replace />} />
-                <Route path="/users" element={isManager ? <Users /> : <Navigate to="/orders" replace />} />
+                <Route path="/users" element={isManager ? <Users currentUser={user} /> : <Navigate to="/orders" replace />} />
                 <Route path="/messages" element={<Messages user={user} />} />
                 <Route path="/accounting" element={isManager ? <Accounting /> : <Navigate to="/orders" replace />} />
                 <Route path="/statistics" element={isManager ? <Statistics /> : <Navigate to="/orders" replace />} />

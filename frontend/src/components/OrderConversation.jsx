@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import { supabase } from '../api/supabase';
+import { sendPushForOrder } from '../services/pushNotifications';
 
 const roleLabels = {
   revendeur: 'Revendeur',
@@ -72,6 +73,7 @@ export default function OrderConversation({ commandeId, commandeStatut, user }) 
       const response = await api.post(`/commandes/${commandeId}/messages`, { contenu });
       setMessages((current) => mergeMessages(current, [response.data.message]));
       setDraft('');
+      await sendPushForOrder(commandeId, 'message');
     } catch (requestError) {
       setError(requestError.response?.data?.error || 'Impossible d’envoyer le message.');
     } finally {

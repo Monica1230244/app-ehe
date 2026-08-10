@@ -33,13 +33,15 @@ function formatCommande(commande) {
     ...commande,
     client_nom: commande.client?.nom,
     client_telephone: commande.client?.telephone,
-    cordonnier_nom: commande.cordonnier?.nom
+    cordonnier_nom: commande.cordonnier?.nom,
+    revendeur_nom: commande.revendeur?.nom
   };
 }
 
 const commandeSelection = `
   *,
   client:clients!commandes_client_id_fkey(nom, telephone),
+  revendeur:profiles!commandes_revendeur_id_fkey(nom),
   cordonnier:profiles!commandes_cordonnier_id_fkey(nom)
 `;
 
@@ -130,6 +132,16 @@ async function get(path, options = {}) {
     const { data, error } = await query;
     if (error) throw apiError(error, 'Impossible de charger les commandes.');
     return { data: { commandes: data.map(formatCommande) } };
+  }
+
+  if (path === '/messages') {
+    const { data, error } = await supabase
+      .from('commande_messages')
+      .select('id, commande_id, auteur_id, auteur_nom, auteur_role, contenu, created_at')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw apiError(error, 'Impossible de charger la messagerie.');
+    return { data: { messages: data } };
   }
 
   const historyMatch = path.match(/^\/commandes\/(\d+)\/history$/);

@@ -8,6 +8,7 @@ import OrderDetails from './pages/OrderDetails';
 import CreateOrder from './pages/CreateOrder';
 import Clients from './pages/Clients';
 import Users from './pages/Users';
+import Messages from './pages/Messages';
 import Notifications from './pages/Notifications';
 import useNotifications from './hooks/useNotifications';
 import NotificationToast from './components/NotificationToast';
@@ -34,6 +35,7 @@ function NavIcon({ name }) {
     clients: 'M16 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM7 13a4 4 0 1 0 0-8 4 4 0 0 0 0 0 8Zm9 1c-3.3 0-6 1.8-6 4v3h12v-3c0-2.2-2.7-4-6-4ZM7 15c-2.8 0-5 1.5-5 3.5V21h6v-3c0-1.1.4-2.1 1.2-2.9A8 8 0 0 0 7 15Z',
     add: 'M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z',
     users: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14Z',
+    messages: 'M4 4h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 5v2h12V9H6Zm0 4v2h8v-2H6Z',
     notifications: 'M12 22a2.5 2.5 0 0 0 2.4-2h-4.8a2.5 2.5 0 0 0 2.4 2Zm7-6-2-2v-4a5 5 0 0 0-4-4.9V3h-2v2.1A5 5 0 0 0 7 10v4l-2 2v2h14v-2Z'
   };
 
@@ -110,6 +112,7 @@ function App() {
       { to: '/create-order', label: 'Nouvelle', icon: 'add' },
       { to: '/users', label: 'Équipe', icon: 'users' }
     ] : []),
+    { to: '/messages', label: 'Messagerie', icon: 'messages' },
     { to: '/notifications', label: 'Alertes', icon: 'notifications' }
   ] : [];
 
@@ -159,6 +162,7 @@ function App() {
                 <Route path="/clients" element={isManager ? <Clients /> : <Navigate to="/orders" replace />} />
                 <Route path="/create-order" element={isManager ? <CreateOrder /> : <Navigate to="/orders" replace />} />
                 <Route path="/users" element={isManager ? <Users /> : <Navigate to="/orders" replace />} />
+                <Route path="/messages" element={<Messages user={user} />} />
                 <Route path="/notifications" element={<Notifications realtimeNotifications={realtimeNotifications} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

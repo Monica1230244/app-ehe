@@ -179,6 +179,29 @@ async function get(path, options = {}) {
     return { data: { comptabilite: data } };
   }
 
+  if (path === '/articles-comptabilite') {
+    const [{ data: articles, error: articlesError }, { data: entries, error: entriesError }] = await Promise.all([
+      supabase
+        .from('commande_articles')
+        .select('id, commande_id, modele, pointure, couleur, quantite, position')
+        .order('commande_id')
+        .order('position'),
+      supabase
+        .from('commande_article_comptabilite')
+        .select('article_id, commande_id, prix_cordonnier_unitaire, prix_vente_unitaire, benefice_unitaire, updated_at')
+    ]);
+    if (articlesError || entriesError) throw apiError(articlesError || entriesError, 'Impossible de charger le détail comptable.');
+    const entriesByArticle = new Map(entries.map((entry) => [entry.article_id, entry]));
+    return {
+      data: {
+        articles: articles.map((article) => ({
+          ...article,
+          comptabilite: entriesByArticle.get(article.id) || null
+        }))
+      }
+    };
+  }
+
   const historyMatch = path.match(/^\/commandes\/(\d+)\/history$/);
   if (historyMatch) {
     const { data, error } = await supabase
@@ -414,6 +437,23 @@ async function post(path, body) {
       .single();
     if (error) throw apiError(error, 'Impossible d’enregistrer les montants de cette commande.');
     return { data: { comptabilite: data } };
+  }
+
+  const itemAccountingMatch = path.match(/^\/commandes\/(\d+)\/comptabilite-lignes$/);
+  if (itemAccountingMatch) {
+    const commandeId = Number(itemAccountingMatch[1]);
+    const { data: accounting, error } = await supabase.rpc('save_commande_article_comptabilite', {
+      p_commande_id: commandeId,
+      p_lignes: body.lignes
+    });
+    if (error) throw apiError(error, 'Impossible d’enregistrer les montants de cette commande.');
+
+    const { data: lines, error: linesError } = await supabase
+      .from('commande_article_comptabilite')
+      .select('article_id, commande_id, prix_cordonnier_unitaire, prix_vente_unitaire, benefice_unitaire, updated_at')
+      .eq('commande_id', commandeId);
+    if (linesError) throw apiError(linesError, 'Montants enregistrés, mais leur détail ne peut pas être rechargé.');
+    return { data: { comptabilite: accounting, lignes: lines } };
   }
 
   if (path === '/upload') {

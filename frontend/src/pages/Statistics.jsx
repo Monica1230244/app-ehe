@@ -142,7 +142,7 @@ export default function Statistics() {
             const entry = accountingByOrder.get(order.id);
             return (
               <article key={order.id} className="statistics-sale-row">
-                <div><strong>{order.numero_commande}</strong><span>{order.client_nom || 'Client'} · {order.modele}</span></div>
+                <div><strong>{order.numero_commande}</strong><span>{order.client_nom || 'Client'} · {order.modele} · {order.quantite} paire{Number(order.quantite) > 1 ? 's' : ''}</span></div>
                 <time>{saleDate(order.date_fin)}</time>
                 <div><span>Vente</span><strong>{entry ? money(entry.prix_vente) : 'Non renseignée'}</strong></div>
                 <div className={Number(entry?.benefice) < 0 ? 'negative' : ''}><span>Bénéfice</span><strong>{entry ? money(entry.benefice) : '—'}</strong></div>

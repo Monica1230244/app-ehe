@@ -317,7 +317,7 @@ button:hover:not(:disabled) { transform: translateY(-1px); }
 .accounting-ledger-header p { margin-top: 5px; color: var(--muted); font-size: .72rem; }
 .accounting-ledger-header input { width: min(100%, 280px); min-height: 43px; padding: 0 13px; border-radius: 12px; background: #fff; }
 .accounting-orders { display: grid; gap: 12px; padding: 14px; }
-.accounting-order-card { display: grid; grid-template-columns: minmax(190px, .85fr) minmax(0, 2fr); gap: 22px; padding: 17px; border: 1px solid #eadde0; border-radius: 17px; background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+.accounting-order-card { display: grid; gap: 16px; padding: 17px; border: 1px solid #eadde0; border-radius: 17px; background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
 .accounting-order-card:hover { border-color: #dcb3bb; box-shadow: 0 9px 24px rgba(74,13,24,.065); }
 .accounting-order-info { display: grid; align-content: center; gap: 6px; }
 .accounting-order-info > div { display: flex; align-items: center; gap: 9px; }
@@ -325,8 +325,14 @@ button:hover:not(:disabled) { transform: translateY(-1px); }
 .accounting-order-info p, .accounting-order-info small { margin: 0; }
 .accounting-order-info p { font-size: .76rem; font-weight: 700; }
 .accounting-order-info small { color: var(--muted); font-size: .66rem; }
-.accounting-order-form { display: grid; grid-template-columns: repeat(2, minmax(130px, 1fr)) minmax(130px, .9fr) minmax(130px, .8fr); align-items: end; gap: 11px; }
+.accounting-order-form { display: grid; gap: 13px; }
 .accounting-order-form label { display: grid; gap: 7px; color: var(--navy); font-size: .68rem; font-weight: 800; }
+.accounting-lines { display: grid; gap: 9px; }
+.accounting-line { display: grid; grid-template-columns: minmax(180px, 1.1fr) repeat(2, minmax(145px, 1fr)) minmax(145px, .85fr); align-items: end; gap: 11px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fcfafb; }
+.accounting-line-product { display: grid; align-self: center; gap: 3px; }
+.accounting-line-product span { color: var(--primary); font-size: .58rem; font-weight: 850; text-transform: uppercase; letter-spacing: .07em; }
+.accounting-line-product strong { color: var(--navy); font-size: .79rem; }
+.accounting-line-product small { color: var(--muted); font-size: .64rem; }
 .money-input { display: flex; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .money-input:focus-within { border-color: #b85a69; box-shadow: 0 0 0 3px rgba(139,30,45,.1); }
 .money-input input { min-width: 0; width: 100%; min-height: 43px; border: 0; border-radius: 0; box-shadow: none; }
@@ -338,6 +344,11 @@ button:hover:not(:disabled) { transform: translateY(-1px); }
 .accounting-save { display: grid; gap: 4px; }
 .accounting-save .primary-button { min-height: 43px; padding: 9px 12px; font-size: .7rem; }
 .accounting-save small { min-height: 12px; color: var(--muted); text-align: center; font-size: .58rem; }
+.accounting-order-total { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)) minmax(145px, .8fr); align-items: center; gap: 11px; padding: 12px; border-radius: 14px; color: var(--navy); background: var(--primary-soft); }
+.accounting-order-total > div:not(.accounting-save) { display: grid; gap: 3px; }
+.accounting-order-total span { color: var(--muted); font-size: .61rem; font-weight: 750; }
+.accounting-order-total strong { font-size: .82rem; }
+.accounting-order-total .negative { color: var(--danger); }
 .statistics-month-picker { display: grid; min-width: 210px; gap: 6px; padding: 11px 13px; border: 1px solid #eadde0; border-radius: 15px; background: #fff; box-shadow: 0 7px 18px rgba(74,13,24,.06); }
 .statistics-month-picker span { color: var(--muted); font-size: .63rem; font-weight: 750; }
 .statistics-month-picker input { min-height: 34px; padding: 0; border: 0; color: var(--navy); background: transparent; font-weight: 800; box-shadow: none; }
@@ -685,6 +696,7 @@ small { font-size: .75rem; }
 :root[data-theme="dark"] .accounting-ledger,
 :root[data-theme="dark"] .accounting-ledger-header input,
 :root[data-theme="dark"] .accounting-order-card,
+:root[data-theme="dark"] .accounting-line,
 :root[data-theme="dark"] .money-input,
 :root[data-theme="dark"] .statistics-month-picker,
 :root[data-theme="dark"] .statistics-metric,
@@ -786,7 +798,9 @@ small { font-size: .75rem; }
   .messaging-panel { padding: 16px; }
   .accounting-ledger-header { align-items: stretch; flex-direction: column; }
   .accounting-ledger-header input { width: 100%; }
-  .accounting-order-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .accounting-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .accounting-line-product { grid-column: 1 / -1; }
+  .accounting-order-total { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .statistics-sale-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .statistics-sale-row > div:first-child { grid-column: 1 / -1; }
   .stock-form { grid-template-columns: minmax(190px, .7fr) minmax(0, 1.3fr); }
@@ -817,7 +831,7 @@ small { font-size: .75rem; }
   .messaging-panel .order-conversation { padding: 10px; }
   .accounting-private { align-self: flex-start; }
   .accounting-summary { grid-template-columns: 1fr; }
-  .accounting-order-form { grid-template-columns: 1fr; }
+  .accounting-line, .accounting-order-total { grid-template-columns: 1fr; }
   .statistics-header { align-items: stretch; }
   .statistics-month-picker { width: 100%; }
   .statistics-summary { grid-template-columns: 1fr; }

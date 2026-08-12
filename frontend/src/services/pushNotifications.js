@@ -67,6 +67,7 @@ async function serviceWorkerRegistration() {
 
 function activationError(error) {
   if (error?.code === 'service-worker-timeout') return error;
+  if (error?.code === 'permission-denied' || error?.code === 'push-subscription-refused') return error;
   if (error?.name === 'NotAllowedError') {
     return new Error('La permission est bloquée. Autorisez les notifications pour EHE dans les réglages du téléphone, puis revenez ici.');
   }
@@ -122,15 +123,29 @@ export async function enablePushNotifications() {
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      throw new DOMException('Permission refusée', 'NotAllowedError');
+      const permissionError = new Error('Android bloque encore EHE. Dans l’écran des réglages, touchez « Autorisations des notifications » en haut et activez la cloche, puis revenez dans EHE.');
+      permissionError.code = 'permission-denied';
+      throw permissionError;
     }
 
     const registration = await serviceWorkerRegistration();
     const existing = await registration.pushManager.getSubscription();
-    const subscription = existing || await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: applicationServerKey(vapidPublicKey)
-    });
+    let subscription = existing;
+    if (!subscription) {
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey(vapidPublicKey)
+        });
+      } catch (error) {
+        if (error?.name === 'NotAllowedError' && Notification.permission === 'granted') {
+          const subscriptionError = new Error('Android autorise les alertes, mais Chrome refuse encore l’abonnement. Fermez EHE, ouvrez le lien dans Chrome, autorisez les notifications du site, puis relancez EHE.');
+          subscriptionError.code = 'push-subscription-refused';
+          throw subscriptionError;
+        }
+        throw error;
+      }
+    }
     const serialized = subscription.toJSON();
     if (!serialized.keys?.p256dh || !serialized.keys?.auth) {
       if (!existing) await subscription.unsubscribe().catch(() => undefined);

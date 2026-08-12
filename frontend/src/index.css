@@ -606,6 +606,8 @@ small { font-size: .75rem; }
 .push-status.active { color: #157654; background: #e9f8f2; }
 .push-settings-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .push-feedback { padding: 8px 10px; border-radius: 9px; background: var(--primary-soft); }
+.push-help-steps { display: grid; gap: 5px; margin: 10px 0 0; padding-left: 20px; color: var(--text); font-size: .74rem; line-height: 1.45; }
+.push-help-steps li::marker { color: var(--primary); font-weight: 850; }
 .statistics-explanation { margin: -5px 0 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); background: var(--surface); font-size: .78rem; line-height: 1.55; }
 .statistics-explanation strong { color: var(--primary-dark); }
 

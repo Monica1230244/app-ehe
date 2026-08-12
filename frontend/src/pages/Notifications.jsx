@@ -14,7 +14,7 @@ function pushDescription(state) {
     return 'Sur iPhone : ouvrez ce lien dans Safari, touchez Partager, puis « Sur l’écran d’accueil ». Lancez ensuite EHE depuis son icône.';
   }
   if (state.reason === 'permission-denied') {
-    return 'La permission est bloquée. Dans les réglages du téléphone, autorisez les notifications pour EHE ou pour ce site.';
+    return 'Android bloque les alertes. Touchez « Autorisations des notifications » dans les réglages EHE et activez la cloche.';
   }
   if (state.reason === 'server-registration-missing') {
     return 'Le téléphone avait une ancienne autorisation, mais elle n’était pas enregistrée par EHE. Touchez « Réparer l’activation ».';
@@ -55,6 +55,20 @@ export default function Notifications({ realtimeNotifications }) {
       setPushState({ supported: false, permission: 'unsupported', subscribed: false, reason: 'service-worker-unavailable' });
       setPushMessage(error.message || 'Impossible de vérifier les notifications push.');
     });
+  }, []);
+
+  useEffect(() => {
+    function refreshAfterSettings() {
+      if (document.visibilityState !== 'visible') return;
+      getPushState().then(setPushState).catch(() => undefined);
+    }
+
+    window.addEventListener('focus', refreshAfterSettings);
+    document.addEventListener('visibilitychange', refreshAfterSettings);
+    return () => {
+      window.removeEventListener('focus', refreshAfterSettings);
+      document.removeEventListener('visibilitychange', refreshAfterSettings);
+    };
   }, []);
 
   useEffect(() => {
@@ -119,6 +133,13 @@ export default function Notifications({ realtimeNotifications }) {
             </span>
           </div>
           <p>{pushDescription(pushState)}</p>
+          {permissionDenied && (
+            <ol className="push-help-steps">
+              <li>Dans l’écran Android affiché sur votre capture, touchez la première ligne « Autorisations des notifications ».</li>
+              <li>Activez la cloche : elle ne doit plus être barrée.</li>
+              <li>Revenez dans EHE et touchez « Vérifier à nouveau ».</li>
+            </ol>
+          )}
           {pushMessage && <small className="push-feedback" role="status">{pushMessage}</small>}
         </div>
         <div className="push-settings-actions">

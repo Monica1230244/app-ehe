@@ -8,6 +8,16 @@ import {
   testPushNotifications
 } from '../services/pushNotifications';
 
+const notificationDateFormatter = new Intl.DateTimeFormat('fr-FR', {
+  dateStyle: 'medium',
+  timeStyle: 'short'
+});
+
+function notificationDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : notificationDateFormatter.format(date);
+}
+
 function pushDescription(state) {
   if (!state) return 'Vérification de la compatibilité de cet appareil…';
   if (state.reason === 'ios-install-required') {
@@ -161,7 +171,7 @@ export default function Notifications({ realtimeNotifications }) {
         {notifications.map((notification) => (
           <div key={`${notification.id}-${notification.created_at}`} className={`notification-card${notification.lu ? '' : ' unread'}`}>
             <div className="text-sm">{notification.message}</div>
-            <div className="text-xs text-gray-500">{notification.created_at}</div>
+            <time className="text-xs text-gray-500" dateTime={notification.created_at}>{notificationDate(notification.created_at)}</time>
             {notification.commande_id && <Link className="mt-2 inline-block text-xs font-medium text-blue-700" to={`/orders/${notification.commande_id}`}>Ouvrir la commande →</Link>}
             {!notification.lu && <button type="button" onClick={() => markAsRead(notification.id)} className="mt-2 text-xs font-medium text-blue-700">Marquer comme lue</button>}
           </div>

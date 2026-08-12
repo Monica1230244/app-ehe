@@ -76,6 +76,11 @@ async function signedStockModel(model) {
   return { ...model, photo_url: data.signedUrl };
 }
 
+async function formatOrderArticle(article) {
+  if (!article.modele_stock) return article;
+  return { ...article, modele_stock: await signedStockModel(article.modele_stock) };
+}
+
 async function get(path, options = {}) {
   ensureConfigured();
   const params = options.params || {};
@@ -194,6 +199,17 @@ async function get(path, options = {}) {
       .order('created_at');
     if (error) throw apiError(error, 'Impossible de charger la conversation.');
     return { data: { messages: data } };
+  }
+
+  const articlesMatch = path.match(/^\/commandes\/(\d+)\/articles$/);
+  if (articlesMatch) {
+    const { data, error } = await supabase
+      .from('commande_articles')
+      .select('id, commande_id, modele_stock_id, modele, pointure, couleur, matiere, semelle, quantite, position, modele_stock:modeles_stock(id, nom, reference, photo_path, file_name)')
+      .eq('commande_id', Number(articlesMatch[1]))
+      .order('position');
+    if (error) throw apiError(error, 'Impossible de charger les articles de la commande.');
+    return { data: { articles: await Promise.all(data.map(formatOrderArticle)) } };
   }
 
   const commandeMatch = path.match(/^\/commandes\/(\d+)$/);
@@ -351,19 +367,22 @@ async function post(path, body) {
   }
 
   if (path === '/commandes') {
-    const { data, error } = await supabase.from('commandes').insert({
-      client_id: Number(body.client_id),
-      cordonnier_id: body.cordonnier_id || null,
-      modele_stock_id: body.modele_stock_id ? Number(body.modele_stock_id) : null,
-      modele: body.modele,
-      pointure: body.pointure,
-      couleur: body.couleur,
-      matiere: body.matiere,
-      semelle: body.semelle,
-      quantite: Number(body.quantite),
-      date_souhaitee: body.date_souhaitee || null,
-      observations: body.observations || null
-    }).select().single();
+    const articles = (body.articles || []).map((article) => ({
+      modele_stock_id: article.modele_stock_id ? Number(article.modele_stock_id) : null,
+      modele: article.modele,
+      pointure: article.pointure,
+      couleur: article.couleur,
+      matiere: article.matiere,
+      semelle: article.semelle,
+      quantite: Number(article.quantite)
+    }));
+    const { data, error } = await supabase.rpc('create_commande_multi', {
+      p_client_id: Number(body.client_id),
+      p_cordonnier_id: body.cordonnier_id,
+      p_date_souhaitee: body.date_souhaitee || null,
+      p_observations: body.observations || null,
+      p_articles: articles
+    });
     if (error) throw apiError(error, 'Impossible de créer la commande.');
     return { data: { commande: data } };
   }

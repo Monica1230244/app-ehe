@@ -23,25 +23,42 @@ function whatsappLink(commande) {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
-function editableOrder(commande) {
+function editableOrder(commande, articles) {
   return {
     client_id: String(commande.client_id),
     cordonnier_id: commande.cordonnier_id || '',
-    modele_stock_id: commande.modele_stock_id ? String(commande.modele_stock_id) : '',
-    modele: commande.modele,
-    pointure: commande.pointure,
-    couleur: commande.couleur,
-    matiere: commande.matiere,
-    semelle: commande.semelle,
-    quantite: String(commande.quantite),
     date_souhaitee: commande.date_souhaitee || '',
-    observations: commande.observations || ''
+    observations: commande.observations || '',
+    articles: articles.map((article) => ({
+      key: String(article.id || crypto.randomUUID()),
+      modele_stock_id: article.modele_stock_id ? String(article.modele_stock_id) : '',
+      modele: article.modele,
+      pointure: article.pointure,
+      couleur: article.couleur,
+      matiere: article.matiere,
+      semelle: article.semelle,
+      quantite: String(article.quantite)
+    }))
+  };
+}
+
+function emptyEditArticle() {
+  return {
+    key: crypto.randomUUID(),
+    modele_stock_id: '',
+    modele: '',
+    pointure: '',
+    couleur: '',
+    matiere: '',
+    semelle: '',
+    quantite: '1'
   };
 }
 
 export default function OrderDetails({ user }) {
   const { id } = useParams();
   const [commande, setCommande] = useState(null);
+  const [articles, setArticles] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [history, setHistory] = useState([]);
   const [message, setMessage] = useState('');
@@ -50,17 +67,20 @@ export default function OrderDetails({ user }) {
   const [editForm, setEditForm] = useState(null);
   const [clients, setClients] = useState([]);
   const [cordonniers, setCordonniers] = useState([]);
+  const [stockModels, setStockModels] = useState([]);
   const [saving, setSaving] = useState(false);
 
   async function loadOrder() {
     setLoading(true);
     try {
-      const [commandeResponse, photosResponse, historyResponse] = await Promise.all([
+      const [commandeResponse, articlesResponse, photosResponse, historyResponse] = await Promise.all([
         api.get(`/commandes/${id}`),
+        api.get(`/commandes/${id}/articles`),
         api.get('/photos', { params: { commande_id: id } }),
         api.get(`/commandes/${id}/history`)
       ]);
       setCommande(commandeResponse.data.commande);
+      setArticles(articlesResponse.data.articles);
       setPhotos(photosResponse.data.photos);
       setHistory(historyResponse.data.history);
     } catch (error) {
@@ -89,17 +109,38 @@ export default function OrderDetails({ user }) {
   async function startEditing() {
     setMessage('');
     try {
-      const [clientsResponse, cordonniersResponse] = await Promise.all([
+      const [clientsResponse, cordonniersResponse, stockResponse] = await Promise.all([
         api.get('/clients'),
-        api.get('/auth/cordonniers')
+        api.get('/auth/cordonniers'),
+        api.get('/modeles-stock', { params: { active: true } })
       ]);
       setClients(clientsResponse.data.clients);
       setCordonniers(cordonniersResponse.data.cordonniers);
-      setEditForm(editableOrder(commande));
+      setStockModels(stockResponse.data.modeles);
+      setEditForm(editableOrder(commande, articles));
       setEditing(true);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible d’ouvrir la correction de la commande.');
     }
+  }
+
+  function updateEditArticle(articleKey, field, value) {
+    setEditForm((current) => ({
+      ...current,
+      articles: current.articles.map((article) => article.key === articleKey ? { ...article, [field]: value } : article)
+    }));
+  }
+
+  function selectEditModel(articleKey, modelId) {
+    const selectedModel = stockModels.find((model) => String(model.id) === modelId);
+    setEditForm((current) => ({
+      ...current,
+      articles: current.articles.map((article) => article.key === articleKey ? {
+        ...article,
+        modele_stock_id: modelId,
+        modele: selectedModel?.nom || ''
+      } : article)
+    }));
   }
 
   async function saveOrder(event) {
@@ -107,10 +148,13 @@ export default function OrderDetails({ user }) {
     setSaving(true);
     setMessage('');
     try {
-      const response = await api.patch(`/commandes/${id}`, editForm);
-      setCommande(response.data.commande);
+      await api.patch(`/commandes/${id}`, {
+        ...editForm,
+        articles: editForm.articles.map(({ key, ...article }) => ({ ...article, quantite: Number(article.quantite) }))
+      });
       setEditing(false);
       setMessage('Commande corrigée.');
+      await loadOrder();
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible de corriger cette commande.');
     } finally {
@@ -138,17 +182,33 @@ export default function OrderDetails({ user }) {
           <span className="rounded bg-slate-100 px-3 py-2 text-sm">Créée le {dateLabel(commande.date_creation)}</span>
         </div>
         {user.role !== 'cordonnier' && commande.client_nom && <div className="mt-4 rounded bg-slate-50 p-3 text-sm"><strong>Client :</strong> {commande.client_nom} — {commande.client_telephone}</div>}
+
         {editing ? (
           <form className="order-edit-form" onSubmit={saveOrder}>
             <label>Client<select value={editForm.client_id} onChange={(event) => setEditForm({ ...editForm, client_id: event.target.value })} required>{clients.map((client) => <option key={client.id} value={client.id}>{client.nom} — {client.telephone}</option>)}</select></label>
             <label>Cordonnier<select value={editForm.cordonnier_id} onChange={(event) => setEditForm({ ...editForm, cordonnier_id: event.target.value })} required>{cordonniers.map((cordonnier) => <option key={cordonnier.id} value={cordonnier.id}>{cordonnier.nom}</option>)}</select></label>
-            <label>Modèle<input value={editForm.modele} onChange={(event) => setEditForm({ ...editForm, modele: event.target.value })} required /></label>
-            <label>Pointure<input value={editForm.pointure} onChange={(event) => setEditForm({ ...editForm, pointure: event.target.value })} required /></label>
-            <label>Couleur<input value={editForm.couleur} onChange={(event) => setEditForm({ ...editForm, couleur: event.target.value })} required /></label>
-            <label>Matière<input value={editForm.matiere} onChange={(event) => setEditForm({ ...editForm, matiere: event.target.value })} required /></label>
-            <label>Semelle<input value={editForm.semelle} onChange={(event) => setEditForm({ ...editForm, semelle: event.target.value })} required /></label>
-            <label>Quantité<input type="number" min="1" value={editForm.quantite} onChange={(event) => setEditForm({ ...editForm, quantite: event.target.value })} required /></label>
             <label>Date souhaitée<input type="date" value={editForm.date_souhaitee} onChange={(event) => setEditForm({ ...editForm, date_souhaitee: event.target.value })} /></label>
+            <section className="order-edit-lines">
+              <div className="order-lines-heading"><div><h2>Articles de la commande</h2><p>Modifiez, ajoutez ou supprimez les variantes.</p></div></div>
+              {editForm.articles.map((article, index) => (
+                <article key={article.key} className="order-line-card">
+                  <div className="order-line-title">
+                    <strong>Ligne {index + 1}</strong>
+                    {editForm.articles.length > 1 && <button type="button" onClick={() => setEditForm((current) => ({ ...current, articles: current.articles.filter((item) => item.key !== article.key) }))}>Supprimer</button>}
+                  </div>
+                  <div className="order-line-grid">
+                    <label>Modèle de la galerie<select value={article.modele_stock_id} onChange={(event) => selectEditModel(article.key, event.target.value)}><option value="">Saisie libre</option>{stockModels.map((model) => <option key={model.id} value={model.id}>{model.nom}</option>)}</select></label>
+                    <label>Nom du modèle<input value={article.modele} onChange={(event) => updateEditArticle(article.key, 'modele', event.target.value)} readOnly={Boolean(article.modele_stock_id)} required /></label>
+                    <label>Pointure<input value={article.pointure} onChange={(event) => updateEditArticle(article.key, 'pointure', event.target.value)} required /></label>
+                    <label>Couleur<input value={article.couleur} onChange={(event) => updateEditArticle(article.key, 'couleur', event.target.value)} required /></label>
+                    <label>Matière<input value={article.matiere} onChange={(event) => updateEditArticle(article.key, 'matiere', event.target.value)} required /></label>
+                    <label>Semelle<input value={article.semelle} onChange={(event) => updateEditArticle(article.key, 'semelle', event.target.value)} required /></label>
+                    <label>Nombre de paires<input type="number" min="1" value={article.quantite} onChange={(event) => updateEditArticle(article.key, 'quantite', event.target.value)} required /></label>
+                  </div>
+                </article>
+              ))}
+              <button type="button" className="secondary-button" onClick={() => setEditForm((current) => ({ ...current, articles: [...current.articles, emptyEditArticle()] }))}>＋ Ajouter une variante</button>
+            </section>
             <label className="order-edit-notes">Observations<textarea value={editForm.observations} onChange={(event) => setEditForm({ ...editForm, observations: event.target.value })} /></label>
             <div className="record-actions order-edit-actions">
               <button type="submit" className="primary-button compact" disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
@@ -156,10 +216,29 @@ export default function OrderDetails({ user }) {
             </div>
           </form>
         ) : (
-          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-            {[['Modèle', commande.modele], ['Pointure', commande.pointure], ['Couleur', commande.couleur], ['Matière', commande.matiere], ['Semelle', commande.semelle], ['Quantité', commande.quantite], ['Date souhaitée', commande.date_souhaitee || '—'], ['Observations', commande.observations || '—']].map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd className="font-medium">{value}</dd></div>)}
-          </dl>
+          <div className="order-items-details">
+            <div className="order-items-summary"><strong>{commande.quantite} paire{commande.quantite > 1 ? 's' : ''}</strong><span>{articles.length} variante{articles.length > 1 ? 's' : ''}</span></div>
+            <div className="order-items-grid">
+              {articles.map((article, index) => (
+                <article key={article.id} className="order-item-detail-card">
+                  {article.modele_stock?.photo_url && <img src={article.modele_stock.photo_url} alt={article.modele} />}
+                  <div className="order-item-detail-heading"><span>Ligne {index + 1}</span><strong>{article.quantite} paire{article.quantite > 1 ? 's' : ''}</strong></div>
+                  <h3>{article.modele}</h3>
+                  <dl>
+                    <div><dt>Pointure</dt><dd>{article.pointure}</dd></div>
+                    <div><dt>Couleur</dt><dd>{article.couleur}</dd></div>
+                    <div><dt>Matière</dt><dd>{article.matiere}</dd></div>
+                    <div><dt>Semelle</dt><dd>{article.semelle}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <dl className="order-general-details">
+              {[['Date souhaitée', commande.date_souhaitee || '—'], ['Observations', commande.observations || '—']].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            </dl>
+          </div>
         )}
+
         {(actions.length > 0 || canNotifyClient || canEdit) && !editing && (
           <div className="mt-5 flex flex-wrap gap-3">
             {canEdit && <button type="button" onClick={startEditing} className="secondary-button accent">Corriger la commande</button>}
@@ -168,6 +247,7 @@ export default function OrderDetails({ user }) {
           </div>
         )}
       </section>
+
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold">Photos de fabrication</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -175,6 +255,7 @@ export default function OrderDetails({ user }) {
           {photos.map((photo) => <figure key={photo.id} className="overflow-hidden rounded border"><img className="aspect-square w-full object-cover" src={photo.storage_path} alt={photo.type_photo.replace('_', ' ')} /><figcaption className="p-2 text-sm capitalize">{photo.type_photo.replace('_', ' ')}</figcaption></figure>)}
         </div>
       </section>
+
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold">Historique</h2>
         <ol className="mt-3 space-y-3 border-l pl-4">

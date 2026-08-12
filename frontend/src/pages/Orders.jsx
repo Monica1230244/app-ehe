@@ -42,7 +42,7 @@ export default function Orders({ user }) {
         {commandes.map((commande) => (
           <Link key={commande.id} to={`/orders/${commande.id}`} className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-blue-500">
             <div className="flex flex-wrap justify-between gap-2"><strong>{commande.numero_commande}</strong><span className={`status-badge status-${commande.statut}`}>{statusLabels[commande.statut]}</span></div>
-            <p className="mt-2 text-sm">{commande.modele} — pointure {commande.pointure}</p>
+            <p className="mt-2 text-sm">{commande.modele} — {commande.quantite} paire{commande.quantite > 1 ? 's' : ''}{commande.pointure !== 'Variées' ? ` · pointure ${commande.pointure}` : ' · pointures variées'}</p>
             {user.role !== 'cordonnier' && commande.client_nom && <p className="mt-1 text-sm text-slate-600">Client : {commande.client_nom}</p>}
           </Link>
         ))}

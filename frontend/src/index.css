@@ -593,6 +593,42 @@ small { font-size: .75rem; }
 .order-edit-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
 .order-edit-form label { display: grid; gap: 7px; color: var(--muted); font-size: .78rem; font-weight: 750; }
 .order-edit-notes, .order-edit-actions { grid-column: 1 / -1; }
+.order-general-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+.order-general-fields label, .order-line-grid label { display: grid; gap: 7px; color: var(--muted); font-size: .76rem; font-weight: 750; }
+.order-lines-section { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fcf8f9; }
+.order-lines-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.order-lines-heading h2, .order-lines-heading p { margin: 0; }
+.order-lines-heading h2 { color: var(--navy); font-size: 1rem; }
+.order-lines-heading p { margin-top: 4px; color: var(--muted); font-size: .7rem; }
+.order-lines-heading > span { padding: 7px 10px; border-radius: 999px; color: var(--primary-dark); background: var(--primary-soft); font-size: .7rem; font-weight: 850; white-space: nowrap; }
+.order-lines-list { display: grid; gap: 12px; }
+.order-line-card { display: grid; gap: 13px; padding: 15px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: 0 7px 20px rgba(74,13,24,.045); }
+.order-line-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--navy); font-size: .82rem; }
+.order-line-title button { border: 0; color: var(--danger); background: transparent; font-size: .68rem; font-weight: 800; }
+.order-line-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
+.order-line-model-preview { display: flex; align-items: center; gap: 10px; width: fit-content; padding: 7px 10px 7px 7px; border-radius: 12px; background: var(--primary-soft); }
+.order-line-model-preview img { width: 45px; height: 45px; border-radius: 9px; object-fit: cover; }
+.order-line-model-preview span { display: grid; gap: 2px; }
+.order-line-model-preview strong { color: var(--navy); font-size: .72rem; }
+.order-line-model-preview small { color: var(--muted); font-size: .6rem; }
+.order-add-line { justify-self: start; }
+.order-stock-link { justify-self: end; color: var(--primary); font-size: .7rem; font-weight: 800; }
+.order-edit-lines { display: grid; grid-column: 1 / -1; gap: 12px; padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: #fcf8f9; }
+.order-items-details { display: grid; gap: 14px; margin-top: 18px; }
+.order-items-summary { display: flex; align-items: center; gap: 10px; }
+.order-items-summary strong { color: var(--primary); font-size: 1.05rem; }
+.order-items-summary span { color: var(--muted); font-size: .72rem; }
+.order-items-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.order-item-detail-card { overflow: hidden; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.order-item-detail-card > img { width: calc(100% + 28px); height: 150px; margin: -14px -14px 13px; object-fit: cover; }
+.order-item-detail-heading { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: .65rem; }
+.order-item-detail-heading strong { color: var(--primary); }
+.order-item-detail-card h3 { margin: 8px 0 12px; color: var(--navy); font-size: 1rem; }
+.order-item-detail-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0; }
+.order-item-detail-card dl div, .order-general-details div { min-width: 0; }
+.order-item-detail-card dt, .order-general-details dt { color: var(--muted); font-size: .62rem; }
+.order-item-detail-card dd, .order-general-details dd { margin: 3px 0 0; color: var(--text); font-size: .76rem; font-weight: 750; overflow-wrap: anywhere; }
+.order-general-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 13px 15px; border-radius: 13px; background: var(--primary-soft); }
 .push-settings-card { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 15px; margin-bottom: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .push-settings-icon { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #9b2839, #681321); box-shadow: 0 8px 18px rgba(104,19,33,.2); }
 .push-settings-card h2, .push-settings-card p { margin: 0; }
@@ -664,6 +700,10 @@ small { font-size: .75rem; }
 :root[data-theme="dark"] .order-stock-picker,
 :root[data-theme="dark"] .order-stock-new,
 :root[data-theme="dark"] .order-stock-option,
+:root[data-theme="dark"] .order-lines-section,
+:root[data-theme="dark"] .order-line-card,
+:root[data-theme="dark"] .order-edit-lines,
+:root[data-theme="dark"] .order-item-detail-card,
 :root[data-theme="dark"] .bg-white,
 :root[data-theme="dark"] button.border { border-color: var(--line); background: var(--surface); color: var(--text); }
 :root[data-theme="dark"] .bg-slate-50,
@@ -752,6 +792,7 @@ small { font-size: .75rem; }
   .stock-form { grid-template-columns: minmax(190px, .7fr) minmax(0, 1.3fr); }
   .stock-gallery-toolbar { align-items: stretch; flex-direction: column; }
   .stock-gallery-controls { width: 100%; }
+  .order-line-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-shell { max-width: 940px; }
 }
 
@@ -790,6 +831,10 @@ small { font-size: .75rem; }
   .stock-form-fields .primary-button { width: 100%; }
   .stock-grid { padding: 12px; }
   .order-stock-heading { align-items: flex-start; flex-direction: column; }
+  .order-general-fields, .order-line-grid, .order-items-grid, .order-general-details { grid-template-columns: 1fr; }
+  .order-lines-heading { align-items: flex-start; flex-direction: column; }
+  .order-lines-heading > span { white-space: normal; }
+  .order-lines-section { padding: 13px; }
   .inline-edit-form, .team-edit-form, .order-edit-form { grid-template-columns: 1fr; }
   .order-edit-notes, .order-edit-actions { grid-column: auto; }
   .team-member { grid-template-columns: 42px minmax(0, 1fr) auto; }

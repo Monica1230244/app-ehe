@@ -103,11 +103,13 @@ export default function Statistics() {
       {error && <p className="conversation-error">{error}</p>}
 
       <section className="statistics-summary">
-        <article className="statistics-metric orders"><span>Ventes livrées</span><strong>{selectedStatistics.salesCount}</strong><small>{monthLabel(selectedMonth)}</small></article>
-        <article className="statistics-metric quantity"><span>Paires vendues</span><strong>{selectedStatistics.quantity}</strong><small>Quantité totale du mois</small></article>
+        <article className="statistics-metric orders"><span>Commandes livrées</span><strong>{selectedStatistics.salesCount}</strong><small>1 commande livrée = 1 vente</small></article>
+        <article className="statistics-metric quantity"><span>Paires vendues</span><strong>{selectedStatistics.quantity}</strong><small>Somme des quantités livrées</small></article>
         <article className="statistics-metric revenue"><span>Chiffre d’affaires</span><strong>{money(selectedStatistics.revenue)}</strong><small>Prix de vente enregistrés</small></article>
         <article className="statistics-metric profit"><span>Bénéfice du mois</span><strong>{money(selectedStatistics.profit)}</strong><small>Après coûts cordonniers</small></article>
       </section>
+
+      <p className="statistics-explanation"><strong>Quelle différence ?</strong> Une commande livrée compte comme une vente, quelle que soit sa quantité. Exemple : une commande de 3 paires représente 1 commande livrée et 3 paires vendues.</p>
 
       {selectedStatistics.missingAccounting > 0 && (
         <p className="statistics-warning">{selectedStatistics.missingAccounting} vente{selectedStatistics.missingAccounting > 1 ? 's' : ''} livrée{selectedStatistics.missingAccounting > 1 ? 's' : ''} sans prix enregistré. Complétez la rubrique Comptabilité pour obtenir le bénéfice exact.</p>

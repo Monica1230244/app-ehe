@@ -599,6 +599,15 @@ small { font-size: .75rem; }
 .push-settings-card h2 { color: var(--navy); font-size: 1rem; }
 .push-settings-card p { margin-top: 5px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
 .push-settings-card small { display: block; margin-top: 7px; color: var(--primary-dark); line-height: 1.4; }
+.push-settings-card.is-active { border-color: #b9dfd1; background: linear-gradient(135deg, var(--surface), #f1fbf7); }
+.push-settings-copy { min-width: 0; }
+.push-settings-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.push-status { padding: 4px 8px; border-radius: 999px; color: #8a5c21; background: #fff3df; font-size: .62rem; font-weight: 850; }
+.push-status.active { color: #157654; background: #e9f8f2; }
+.push-settings-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.push-feedback { padding: 8px 10px; border-radius: 9px; background: var(--primary-soft); }
+.statistics-explanation { margin: -5px 0 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); background: var(--surface); font-size: .78rem; line-height: 1.55; }
+.statistics-explanation strong { color: var(--primary-dark); }
 
 /* Dark theme */
 :root[data-theme="dark"] {
@@ -668,6 +677,7 @@ small { font-size: .75rem; }
 :root[data-theme="dark"] .status-annulee { color: #ff9aae; background: #4a2029; }
 :root[data-theme="dark"] .team-status { color: #8bd8b9; background: #1b3029; }
 :root[data-theme="dark"] .team-status.inactive { color: var(--muted); background: #352429; }
+:root[data-theme="dark"] .push-settings-card.is-active { border-color: #315b4c; background: linear-gradient(135deg, var(--surface), #1b3029); }
 :root[data-theme="dark"] .notification-toast > button { background: #3c2027; }
 :root[data-theme="dark"] input[readonly] { color: var(--primary-dark); background: #3c2027; }
 :root[data-theme="dark"] .auth-shell,
@@ -784,7 +794,8 @@ small { font-size: .75rem; }
   .team-member > .team-status { grid-column: 2; }
   .team-member > .secondary-button { grid-column: 2 / -1; }
   .push-settings-card { grid-template-columns: 42px minmax(0, 1fr); }
-  .push-settings-card > button { grid-column: 1 / -1; width: 100%; }
+  .push-settings-actions { grid-column: 1 / -1; }
+  .push-settings-actions > button { width: 100%; }
   .flex.gap-2 { flex-wrap: wrap; }
   .flex.gap-2 > button { width: 100%; }
 }

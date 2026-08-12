@@ -1,7 +1,35 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
-import { disablePushNotifications, enablePushNotifications, getPushState } from '../services/pushNotifications';
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  getPushState,
+  testPushNotifications
+} from '../services/pushNotifications';
+
+function pushDescription(state) {
+  if (!state) return 'Vérification de la compatibilité de cet appareil…';
+  if (state.reason === 'ios-install-required') {
+    return 'Sur iPhone : ouvrez ce lien dans Safari, touchez Partager, puis « Sur l’écran d’accueil ». Lancez ensuite EHE depuis son icône.';
+  }
+  if (state.reason === 'permission-denied') {
+    return 'La permission est bloquée. Dans les réglages du téléphone, autorisez les notifications pour EHE ou pour ce site.';
+  }
+  if (state.reason === 'server-registration-missing') {
+    return 'Le téléphone avait une ancienne autorisation, mais elle n’était pas enregistrée par EHE. Touchez « Réparer l’activation ».';
+  }
+  if (state.reason === 'service-worker-timeout' || state.reason === 'service-worker-unavailable') {
+    return 'Le service de notifications ne répond pas. Fermez complètement EHE, rouvrez l’application et relancez la vérification.';
+  }
+  if (!state.supported) {
+    return 'Utilisez Safari sur iPhone ou Chrome sur Android, puis installez EHE sur l’écran d’accueil.';
+  }
+  if (state.subscribed) {
+    return 'Ce téléphone est bien enregistré pour recevoir les nouvelles commandes, statuts et messages, même lorsque EHE est fermée.';
+  }
+  return 'Cet appareil est compatible. Activez les alertes puis acceptez la demande du téléphone.';
+}
 
 export default function Notifications({ realtimeNotifications }) {
   const [notifications, setNotifications] = useState([]);
@@ -9,9 +37,24 @@ export default function Notifications({ realtimeNotifications }) {
   const [pushMessage, setPushMessage] = useState('');
   const [pushBusy, setPushBusy] = useState(false);
 
+  async function refreshPushState() {
+    setPushBusy(true);
+    setPushMessage('');
+    try {
+      setPushState(await getPushState());
+    } catch (error) {
+      setPushMessage(error.message || 'Impossible de vérifier les notifications push.');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
   useEffect(() => {
     api.get('/notifications').then((response) => setNotifications(response.data.notifications));
-    getPushState().then(setPushState).catch(() => setPushState({ supported: false, permission: 'unsupported', subscribed: false }));
+    getPushState().then(setPushState).catch((error) => {
+      setPushState({ supported: false, permission: 'unsupported', subscribed: false, reason: 'service-worker-unavailable' });
+      setPushMessage(error.message || 'Impossible de vérifier les notifications push.');
+    });
   }, []);
 
   useEffect(() => {
@@ -38,34 +81,59 @@ export default function Notifications({ realtimeNotifications }) {
         : await enablePushNotifications();
       setPushState(nextState);
       setPushMessage(nextState.subscribed
-        ? 'Notifications activées sur cet appareil, même lorsque l’application est fermée.'
+        ? 'Activation réussie. Utilisez maintenant « Tester la notification ».'
         : 'Notifications désactivées sur cet appareil.');
     } catch (error) {
       setPushMessage(error.message || 'Impossible de modifier les notifications push.');
+      setPushState(await getPushState().catch(() => pushState));
     } finally {
       setPushBusy(false);
     }
   }
 
+  async function testPush() {
+    setPushBusy(true);
+    setPushMessage('');
+    try {
+      await testPushNotifications();
+      setPushMessage('Test envoyé. Une notification EHE doit apparaître immédiatement sur ce téléphone.');
+    } catch (error) {
+      setPushMessage(error.message || 'Le test de notification a échoué.');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  const permissionDenied = pushState?.permission === 'denied';
+
   return (
     <div className="page-shell max-w-2xl">
       <div className="page-header"><div><h1>Notifications</h1><p>Les dernières informations importantes de votre atelier.</p></div></div>
-      <section className="push-settings-card">
+      <section className={`push-settings-card${pushState?.subscribed ? ' is-active' : ''}`}>
         <div className="push-settings-icon" aria-hidden="true">●</div>
-        <div>
-          <h2>Notifications sur cet appareil</h2>
-          <p>
-            {pushState?.supported
-              ? 'Recevez les nouvelles commandes, changements de statut et messages même lorsque l’application est fermée.'
-              : 'Installez l’application sur l’écran d’accueil et utilisez un navigateur compatible pour recevoir les alertes.'}
-          </p>
-          {pushMessage && <small role="status">{pushMessage}</small>}
+        <div className="push-settings-copy">
+          <div className="push-settings-title">
+            <h2>Notifications sur cet appareil</h2>
+            <span className={pushState?.subscribed ? 'push-status active' : 'push-status'}>
+              {pushState?.subscribed ? 'Activées' : permissionDenied ? 'Bloquées' : 'Non activées'}
+            </span>
+          </div>
+          <p>{pushDescription(pushState)}</p>
+          {pushMessage && <small className="push-feedback" role="status">{pushMessage}</small>}
         </div>
-        {pushState?.supported && (
-          <button type="button" className={pushState.subscribed ? 'secondary-button' : 'primary-button compact'} onClick={togglePush} disabled={pushBusy || pushState.permission === 'denied'}>
-            {pushBusy ? 'Veuillez patienter…' : pushState.subscribed ? 'Désactiver' : 'Activer les notifications'}
-          </button>
-        )}
+        <div className="push-settings-actions">
+          {pushState?.supported && !permissionDenied && (
+            <button type="button" className={pushState.subscribed ? 'secondary-button' : 'primary-button compact'} onClick={togglePush} disabled={pushBusy}>
+              {pushBusy ? 'Veuillez patienter…' : pushState.subscribed ? 'Désactiver' : pushState.browserSubscribed ? 'Réparer l’activation' : 'Activer les notifications'}
+            </button>
+          )}
+          {pushState?.subscribed && (
+            <button type="button" className="primary-button compact" onClick={testPush} disabled={pushBusy}>Tester la notification</button>
+          )}
+          {(!pushState?.supported || permissionDenied) && (
+            <button type="button" className="secondary-button" onClick={refreshPushState} disabled={pushBusy}>Vérifier à nouveau</button>
+          )}
+        </div>
       </section>
       <div className="space-y-2">
         {notifications.length === 0 && <div>Aucune notification.</div>}

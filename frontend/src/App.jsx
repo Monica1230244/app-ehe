@@ -62,8 +62,10 @@ function App() {
   const [user, setUser] = useState(getStoredUser);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
   const [theme, setTheme] = useState(getInitialTheme);
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
   const realtimeNotifications = useNotifications(user);
   const isManager = user && ['revendeur', 'admin'].includes(user.role);
+  const isPublicCatalog = /^#\/catalogue\/[^/?#]+/.test(currentHash);
 
   function handleLogin(currentUser) {
     localStorage.setItem('ehe_user', JSON.stringify(currentUser));
@@ -74,6 +76,12 @@ function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('ehe_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const handleHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
@@ -120,6 +128,17 @@ function App() {
         <h1>Configuration requise</h1>
         <p>Ajoutez l’adresse et la clé publique Supabase dans les variables de déploiement.</p>
       </main>
+    );
+  }
+
+  if (isPublicCatalog) {
+    return (
+      <HashRouter>
+        <Routes>
+          <Route path="/catalogue/:token" element={<PublicCatalog />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
     );
   }
 

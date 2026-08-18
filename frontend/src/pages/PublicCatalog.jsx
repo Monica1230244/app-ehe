@@ -195,7 +195,7 @@ export default function PublicCatalog() {
           <div>
             <span className="eyebrow">Choisissez votre style</span>
             <h1>Votre prochaine paire commence ici.</h1>
-            <p>Parcourez les modèles EHE, ajoutez vos préférences au panier puis envoyez votre sélection. Le revendeur vous contactera pour confirmer les détails.</p>
+            <p>Parcourez les modèles EHE, ajoutez vos préférences au panier puis envoyez votre sélection. EHE vous contactera pour confirmer les détails.</p>
           </div>
           <div className="public-catalog-steps">
             <span><b>1</b> Choisissez</span>

@@ -33,25 +33,49 @@ export default function CreateOrder() {
   const [clients, setClients] = useState([]);
   const [cordonniers, setCordonniers] = useState([]);
   const [stockModels, setStockModels] = useState([]);
+  const [sourceRequest, setSourceRequest] = useState(null);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function loadFormData() {
       try {
-        const [clientsResponse, cordonniersResponse, stockResponse] = await Promise.all([
+        const requestId = searchParams.get('demande');
+        const [clientsResponse, cordonniersResponse, stockResponse, requestResponse] = await Promise.all([
           api.get('/clients'),
           api.get('/auth/cordonniers'),
-          api.get('/modeles-stock', { params: { active: true } })
+          api.get('/modeles-stock', { params: { active: true } }),
+          requestId ? api.get(`/demandes-catalogue/${requestId}`) : Promise.resolve(null)
         ]);
         setClients(clientsResponse.data.clients);
         setCordonniers(cordonniersResponse.data.cordonniers);
         setStockModels(stockResponse.data.modeles);
 
-        const requestedModelId = searchParams.get('modele');
-        const requestedModel = stockResponse.data.modeles.find((model) => String(model.id) === requestedModelId);
-        if (requestedModel) {
-          setArticles([newArticle({ modele_stock_id: String(requestedModel.id), modele: requestedModel.nom })]);
+        if (requestResponse?.data.demande) {
+          const request = requestResponse.data.demande;
+          const matchingClient = clientsResponse.data.clients.find((client) => client.telephone.replace(/\s/g, '') === request.telephone.replace(/\s/g, ''));
+          setSourceRequest(request);
+          setForm({
+            ...emptyForm,
+            client_id: matchingClient ? String(matchingClient.id) : `demande-${request.id}`,
+            observations: request.note ? `Demande du client : ${request.note}` : ''
+          });
+          setArticles(request.articles.map((article) => newArticle({
+            modele_stock_id: String(article.modele_stock_id),
+            modele: article.modele?.nom || '',
+            pointure: article.pointure || '',
+            couleur: article.couleur || '',
+            quantite: String(article.quantite)
+          })));
+          if (request.statut === 'nouvelle') {
+            await api.patch(`/demandes-catalogue/${request.id}`, { statut: 'en_cours' });
+          }
+        } else {
+          const requestedModelId = searchParams.get('modele');
+          const requestedModel = stockResponse.data.modeles.find((model) => String(model.id) === requestedModelId);
+          if (requestedModel) {
+            setArticles([newArticle({ modele_stock_id: String(requestedModel.id), modele: requestedModel.nom })]);
+          }
         }
       } catch (error) {
         setMessage(error.response?.data?.error || 'Impossible de charger les données du formulaire.');
@@ -105,8 +129,20 @@ export default function CreateOrder() {
     setIsSubmitting(true);
     setMessage('');
     try {
+      let clientId = form.client_id;
+      if (sourceRequest && clientId === `demande-${sourceRequest.id}`) {
+        const clientResponse = await api.post('/clients', {
+          nom: sourceRequest.nom_client,
+          telephone: sourceRequest.telephone
+        });
+        clientId = String(clientResponse.data.client.id);
+        setClients((current) => [clientResponse.data.client, ...current]);
+        setForm((current) => ({ ...current, client_id: clientId }));
+      }
+
       const response = await api.post('/commandes', {
         ...form,
+        client_id: clientId,
         articles: articles.map(({ key, ...article }) => ({ ...article, quantite: Number(article.quantite) }))
       });
       const commande = response.data.commande;
@@ -114,6 +150,9 @@ export default function CreateOrder() {
         .filter(([, file]) => file)
         .map(([typePhoto, file]) => uploadPhoto(commande.id, typePhoto, file)));
       await sendPushForOrder(commande.id, 'order_created');
+      if (sourceRequest) {
+        await api.patch(`/demandes-catalogue/${sourceRequest.id}`, { statut: 'convertie', commande_id: commande.id }).catch(() => undefined);
+      }
       navigate(`/orders/${commande.id}`);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible de créer la commande.');
@@ -125,11 +164,13 @@ export default function CreateOrder() {
   return (
     <div className="page-shell max-w-4xl">
       <div className="page-header"><div><h1>Nouvelle commande</h1><p>Ajoutez une ligne pour chaque modèle, couleur ou pointure différente.</p></div></div>
+      {sourceRequest && <div className="catalog-order-source"><span>Panier client</span><div><strong>Sélection de {sourceRequest.nom_client}</strong><small>{sourceRequest.telephone} · Complétez la matière, la semelle et les informations manquantes avant de créer la commande.</small></div></div>}
       <form className="mt-5 space-y-4 rounded-xl border bg-white p-5 shadow-sm" onSubmit={handleSubmit}>
         <section className="order-general-fields">
           <label>Client
             <select name="client_id" value={form.client_id} onChange={updateForm} required>
               <option value="">Sélectionner un client</option>
+              {sourceRequest && !clients.some((client) => client.telephone.replace(/\s/g, '') === sourceRequest.telephone.replace(/\s/g, '')) && <option value={`demande-${sourceRequest.id}`}>{sourceRequest.nom_client} — {sourceRequest.telephone} (nouveau client)</option>}
               {clients.map((client) => <option key={client.id} value={client.id}>{client.nom} — {client.telephone}</option>)}
             </select>
           </label>

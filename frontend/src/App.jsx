@@ -13,6 +13,8 @@ import Messages from './pages/Messages';
 import Accounting from './pages/Accounting';
 import Statistics from './pages/Statistics';
 import Notifications from './pages/Notifications';
+import PublicCatalog from './pages/PublicCatalog';
+import CatalogRequests from './pages/CatalogRequests';
 import useNotifications from './hooks/useNotifications';
 import NotificationToast from './components/NotificationToast';
 import InstallAppButton from './components/InstallAppButton';
@@ -44,6 +46,7 @@ function NavIcon({ name }) {
     orders: 'M6 3h12l2 4-8 4-8-4 2-4Zm-2 6 8 4 8-4v9l-8 4-8-4V9Z',
     clients: 'M16 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM7 13a4 4 0 1 0 0-8 4 4 0 0 0 0 0 8Zm9 1c-3.3 0-6 1.8-6 4v3h12v-3c0-2.2-2.7-4-6-4ZM7 15c-2.8 0-5 1.5-5 3.5V21h6v-3c0-1.1.4-2.1 1.2-2.9A8 8 0 0 0 7 15Z',
     stock: 'M4 5.5 12 2l8 3.5V18l-8 4-8-4V5.5Zm3 1.4 5 2.2 5-2.2L12 4.7 7 6.9Zm-1 2v7.8l5 2.5v-8.1L6 8.9Zm7 10.3 5-2.5V8.9l-5 2.2v8.1Z',
+    requests: 'M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L20 7H7M10 20a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm8 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z',
     add: 'M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z',
     users: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14Z',
     messages: 'M4 4h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 5v2h12V9H6Zm0 4v2h8v-2H6Z',
@@ -130,6 +133,7 @@ function App() {
     ...(isManager ? [
       { to: '/clients', label: 'Clients', icon: 'clients' },
       { to: '/stock', label: 'Stock', icon: 'stock' },
+      { to: '/catalog-requests', label: 'Demandes', icon: 'requests' },
       { to: '/create-order', label: 'Nouvelle', icon: 'add' },
       { to: '/users', label: 'Équipe', icon: 'users' }
     ] : []),
@@ -193,6 +197,7 @@ function App() {
                 <Route path="/orders/:id" element={<OrderDetails user={user} />} />
                 <Route path="/clients" element={isManager ? <Clients /> : <Navigate to="/orders" replace />} />
                 <Route path="/stock" element={isManager ? <Stock /> : <Navigate to="/orders" replace />} />
+                <Route path="/catalog-requests" element={isManager ? <CatalogRequests /> : <Navigate to="/orders" replace />} />
                 <Route path="/create-order" element={isManager ? <CreateOrder /> : <Navigate to="/orders" replace />} />
                 <Route path="/users" element={isManager ? <Users currentUser={user} /> : <Navigate to="/orders" replace />} />
                 <Route path="/messages" element={<Messages user={user} />} />
@@ -208,6 +213,7 @@ function App() {
         </div>
       ) : (
         <Routes>
+          <Route path="/catalogue/:token" element={<PublicCatalog />} />
           <Route path="/register" element={allowPublicSignup ? <Register onRegister={handleLogin} /> : <Navigate to="/" replace />} />
           <Route path="/*" element={<Login onLogin={handleLogin} allowRegistration={allowPublicSignup} />} />
         </Routes>

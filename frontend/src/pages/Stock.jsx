@@ -16,6 +16,8 @@ export default function Stock() {
   const [message, setMessage] = useState('');
   const [editingModelId, setEditingModelId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
+  const [catalogueToken, setCatalogueToken] = useState('');
+  const [sharing, setSharing] = useState(false);
   const fileInput = useRef(null);
 
   useEffect(() => {
@@ -23,6 +25,10 @@ export default function Stock() {
       .then((response) => setModeles(response.data.modeles))
       .catch((requestError) => setMessage(requestError.response?.data?.error || 'Impossible de charger le stock.'))
       .finally(() => setLoading(false));
+
+    api.get('/catalogue-link')
+      .then((response) => setCatalogueToken(response.data.token))
+      .catch(() => setCatalogueToken(''));
   }, []);
 
   useEffect(() => {
@@ -50,6 +56,30 @@ export default function Stock() {
   }, [filter, modeles, search]);
 
   const activeCount = modeles.filter((modele) => modele.is_active).length;
+  const catalogueLink = catalogueToken ? `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}` : '';
+
+  async function copyCatalogueLink() {
+    try {
+      await navigator.clipboard.writeText(catalogueLink);
+      setMessage('Lien du catalogue copié. Vous pouvez maintenant l’envoyer au client.');
+    } catch {
+      setMessage('Copiez manuellement le lien affiché.');
+    }
+  }
+
+  async function rotateCatalogueLink() {
+    setSharing(true);
+    setMessage('');
+    try {
+      const response = await api.post('/catalogue-link/rotate', {});
+      setCatalogueToken(response.data.token);
+      setMessage('Nouveau lien créé. L’ancien lien ne fonctionne plus.');
+    } catch (requestError) {
+      setMessage(requestError.response?.data?.error || 'Impossible de renouveler le lien.');
+    } finally {
+      setSharing(false);
+    }
+  }
 
   async function submitModel(event) {
     event.preventDefault();
@@ -127,6 +157,17 @@ export default function Stock() {
         </div>
         <span className="stock-count"><strong>{activeCount}</strong> modèle{activeCount > 1 ? 's' : ''} disponible{activeCount > 1 ? 's' : ''}</span>
       </div>
+
+      <section className="catalog-share-card">
+        <div className="catalog-share-icon">↗</div>
+        <div className="catalog-share-copy"><span>Catalogue client</span><h2>Partagez vos modèles sans donner accès à l’application</h2><p>Le client choisit ses modèles, ajoute ses préférences au panier et vous recevez directement sa demande.</p></div>
+        <div className="catalog-share-actions">
+          <input value={catalogueLink} readOnly aria-label="Lien public du catalogue" />
+          <button type="button" className="primary-button compact" onClick={copyCatalogueLink} disabled={!catalogueLink}>Copier le lien</button>
+          <button type="button" className="secondary-button" onClick={rotateCatalogueLink} disabled={sharing}>{sharing ? 'Création…' : 'Créer un nouveau lien'}</button>
+          <Link to="/catalog-requests">Voir les demandes reçues →</Link>
+        </div>
+      </section>
 
       <section className="stock-create-card">
         <div className="stock-create-copy">

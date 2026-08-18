@@ -76,6 +76,11 @@ async function signedStockModel(model) {
   return { ...model, photo_url: data.signedUrl };
 }
 
+function publicStockModel(model) {
+  const { data } = supabase.storage.from('modele-photos').getPublicUrl(model.photo_path);
+  return { ...model, photo_url: data.publicUrl };
+}
+
 async function formatOrderArticle(article) {
   if (!article.modele_stock) return article;
   return { ...article, modele_stock: await signedStockModel(article.modele_stock) };
@@ -131,6 +136,52 @@ async function get(path, options = {}) {
     const { data, error } = await query;
     if (error) throw apiError(error, 'Impossible de charger la galerie de modèles.');
     return { data: { modeles: await Promise.all(data.map(signedStockModel)) } };
+  }
+
+  if (path === '/catalogue-link') {
+    const { data, error } = await supabase.rpc('get_or_create_catalogue_token');
+    if (error) throw apiError(error, 'Impossible de créer le lien du catalogue.');
+    return { data: { token: data } };
+  }
+
+  const publicCatalogMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)$/i);
+  if (publicCatalogMatch) {
+    const { data, error } = await supabase.rpc('get_catalogue_public', { p_token: publicCatalogMatch[1] });
+    if (error) throw apiError(error, 'Impossible de charger ce catalogue.');
+    if (!data) throw apiError(null, 'Ce lien de catalogue est invalide ou désactivé.');
+    return { data: { catalogue: { ...data, modeles: (data.modeles || []).map(publicStockModel) } } };
+  }
+
+  if (path === '/demandes-catalogue') {
+    const { data, error } = await supabase
+      .from('demandes_catalogue')
+      .select('id, revendeur_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .order('created_at', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger les demandes du catalogue.');
+    const requests = await Promise.all(data.map(async (request) => ({
+      ...request,
+      articles: await Promise.all((request.articles || [])
+        .sort((first, second) => first.position - second.position)
+        .map(async (article) => ({ ...article, modele: article.modele ? await signedStockModel(article.modele) : null })))
+    })));
+    return { data: { demandes: requests } };
+  }
+
+  const catalogRequestMatch = path.match(/^\/demandes-catalogue\/(\d+)$/);
+  if (catalogRequestMatch) {
+    const { data, error } = await supabase
+      .from('demandes_catalogue')
+      .select('id, revendeur_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .eq('id', Number(catalogRequestMatch[1]))
+      .single();
+    if (error) throw apiError(error, 'Demande de catalogue introuvable.');
+    const request = {
+      ...data,
+      articles: await Promise.all((data.articles || [])
+        .sort((first, second) => first.position - second.position)
+        .map(async (article) => ({ ...article, modele: article.modele ? await signedStockModel(article.modele) : null })))
+    };
+    return { data: { demande: request } };
   }
 
   const clientHistoryMatch = path.match(/^\/clients\/(\d+)\/commandes$/);
@@ -389,6 +440,25 @@ async function post(path, body) {
     return { data: { modele: await signedStockModel(data) } };
   }
 
+  const publicCatalogRequestMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/demandes$/i);
+  if (publicCatalogRequestMatch) {
+    const { data, error } = await supabase.rpc('submit_demande_catalogue', {
+      p_token: publicCatalogRequestMatch[1],
+      p_nom_client: body.nom_client,
+      p_telephone: body.telephone,
+      p_note: body.note || null,
+      p_articles: body.articles
+    });
+    if (error) throw apiError(error, 'Impossible d’envoyer votre sélection.');
+    return { data: { demande_id: data } };
+  }
+
+  if (path === '/catalogue-link/rotate') {
+    const { data, error } = await supabase.rpc('rotate_catalogue_token');
+    if (error) throw apiError(error, 'Impossible de renouveler le lien du catalogue.');
+    return { data: { token: data } };
+  }
+
   if (path === '/commandes') {
     const articles = (body.articles || []).map((article) => ({
       modele_stock_id: article.modele_stock_id ? Number(article.modele_stock_id) : null,
@@ -522,6 +592,21 @@ async function patch(path, body = {}) {
       .single();
     if (error) throw apiError(error, 'Impossible de modifier ce modèle.');
     return { data: { modele: await signedStockModel(data) } };
+  }
+
+  const catalogRequestMatch = path.match(/^\/demandes-catalogue\/(\d+)$/);
+  if (catalogRequestMatch) {
+    const changes = {};
+    if (body.statut) changes.statut = body.statut;
+    if (body.commande_id !== undefined) changes.commande_id = body.commande_id || null;
+    const { data, error } = await supabase
+      .from('demandes_catalogue')
+      .update(changes)
+      .eq('id', Number(catalogRequestMatch[1]))
+      .select('id, statut, commande_id, updated_at')
+      .single();
+    if (error) throw apiError(error, 'Impossible de mettre à jour cette demande.');
+    return { data: { demande: data } };
   }
 
   const commandeMatch = path.match(/^\/commandes\/(\d+)$/);

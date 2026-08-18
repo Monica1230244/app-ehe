@@ -173,6 +173,7 @@ export default function Notifications({ realtimeNotifications }) {
             <div className="text-sm">{notification.message}</div>
             <time className="text-xs text-gray-500" dateTime={notification.created_at}>{notificationDate(notification.created_at)}</time>
             {notification.commande_id && <Link className="mt-2 inline-block text-xs font-medium text-blue-700" to={`/orders/${notification.commande_id}`}>Ouvrir la commande →</Link>}
+            {notification.demande_catalogue_id && <Link className="mt-2 inline-block text-xs font-medium text-blue-700" to="/catalog-requests">Voir la demande client →</Link>}
             {!notification.lu && <button type="button" onClick={() => markAsRead(notification.id)} className="mt-2 text-xs font-medium text-blue-700">Marquer comme lue</button>}
           </div>
         ))}

@@ -1,12 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Brand from '../components/Brand';
 import api from '../api/client';
 
 const emptyCustomer = { nom_client: '', telephone: '', note: '' };
 
+function rememberedCustomerKey(catalogToken) {
+  return `ehe_catalog_customer:${catalogToken}`;
+}
+
+function readRememberedCustomer(catalogToken) {
+  try {
+    const remembered = JSON.parse(localStorage.getItem(rememberedCustomerKey(catalogToken)));
+    if (remembered?.nom_client && remembered?.telephone) {
+      return { ...emptyCustomer, nom_client: remembered.nom_client, telephone: remembered.telephone };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function forgetRememberedCustomer(catalogToken) {
+  try {
+    localStorage.removeItem(rememberedCustomerKey(catalogToken));
+  } catch {
+    return;
+  }
+}
+
 export default function PublicCatalog() {
   const { token } = useParams();
+  const [searchParams] = useSearchParams();
+  const clientToken = searchParams.get('client') || '';
   const [catalog, setCatalog] = useState(null);
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState(emptyCustomer);
@@ -15,6 +41,7 @@ export default function PublicCatalog() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [customerRecognized, setCustomerRecognized] = useState(false);
 
   useEffect(() => {
     api.get(`/catalogue-public/${token}`)
@@ -22,6 +49,22 @@ export default function PublicCatalog() {
       .catch((requestError) => setError(requestError.response?.data?.error || 'Impossible d’ouvrir ce catalogue.'))
       .finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    const rememberedCustomer = readRememberedCustomer(token);
+    if (rememberedCustomer) {
+      setCustomer(rememberedCustomer);
+      setCustomerRecognized(true);
+    }
+
+    if (!clientToken) return;
+    api.get(`/catalogue-public/${token}/clients/${clientToken}`)
+      .then((response) => {
+        setCustomer({ ...emptyCustomer, ...response.data.client });
+        setCustomerRecognized(true);
+      })
+      .catch(() => undefined);
+  }, [clientToken, token]);
 
   const filteredModels = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('fr');
@@ -57,6 +100,7 @@ export default function PublicCatalog() {
     try {
       await api.post(`/catalogue-public/${token}/demandes`, {
         ...customer,
+        client_token: clientToken || null,
         articles: cart.map((item) => ({
           modele_stock_id: item.modele.id,
           quantite: Number(item.quantite),
@@ -64,9 +108,15 @@ export default function PublicCatalog() {
           couleur: item.couleur
         }))
       });
+      try {
+        localStorage.setItem(rememberedCustomerKey(token), JSON.stringify({
+          nom_client: customer.nom_client.trim(),
+          telephone: customer.telephone.trim()
+        }));
+      } catch {}
+      setCustomerRecognized(true);
       setSent(true);
       setCart([]);
-      setCustomer(emptyCustomer);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (requestError) {
       setError(requestError.response?.data?.error || 'Impossible d’envoyer votre sélection.');
@@ -163,6 +213,19 @@ export default function PublicCatalog() {
 
                 <div className="public-customer-fields">
                   <h3>Vos coordonnées</h3>
+                  {customerRecognized && (
+                    <div className="public-customer-recognized">
+                      <span>✓ Coordonnées reconnues</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          forgetRememberedCustomer(token);
+                          setCustomer(emptyCustomer);
+                          setCustomerRecognized(false);
+                        }}
+                      >Ce n’est pas moi</button>
+                    </div>
+                  )}
                   <label>Nom complet<input value={customer.nom_client} onChange={(event) => setCustomer({ ...customer, nom_client: event.target.value })} maxLength="120" required /></label>
                   <label>Numéro de téléphone / WhatsApp<input type="tel" inputMode="tel" value={customer.telephone} onChange={(event) => setCustomer({ ...customer, telephone: event.target.value })} maxLength="30" required /></label>
                   <label>Message <small>Facultatif</small><textarea value={customer.note} onChange={(event) => setCustomer({ ...customer, note: event.target.value })} maxLength="1000" placeholder="Une précision sur votre sélection…" /></label>

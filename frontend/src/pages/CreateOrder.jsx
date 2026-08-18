@@ -24,6 +24,10 @@ function newArticle(values = {}) {
   };
 }
 
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
 export default function CreateOrder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -53,7 +57,10 @@ export default function CreateOrder() {
 
         if (requestResponse?.data.demande) {
           const request = requestResponse.data.demande;
-          const matchingClient = clientsResponse.data.clients.find((client) => client.telephone.replace(/\s/g, '') === request.telephone.replace(/\s/g, ''));
+          const matchingClient = clientsResponse.data.clients.find((client) => (
+            Number(client.id) === Number(request.client_id)
+            || normalizePhone(client.telephone) === normalizePhone(request.telephone)
+          ));
           setSourceRequest(request);
           setForm({
             ...emptyForm,
@@ -170,7 +177,7 @@ export default function CreateOrder() {
           <label>Client
             <select name="client_id" value={form.client_id} onChange={updateForm} required>
               <option value="">Sélectionner un client</option>
-              {sourceRequest && !clients.some((client) => client.telephone.replace(/\s/g, '') === sourceRequest.telephone.replace(/\s/g, '')) && <option value={`demande-${sourceRequest.id}`}>{sourceRequest.nom_client} — {sourceRequest.telephone} (nouveau client)</option>}
+              {sourceRequest && !clients.some((client) => Number(client.id) === Number(sourceRequest.client_id) || normalizePhone(client.telephone) === normalizePhone(sourceRequest.telephone)) && <option value={`demande-${sourceRequest.id}`}>{sourceRequest.nom_client} — {sourceRequest.telephone} (nouveau client)</option>}
               {clients.map((client) => <option key={client.id} value={client.id}>{client.nom} — {client.telephone}</option>)}
             </select>
           </label>

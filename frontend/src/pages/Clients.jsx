@@ -11,6 +11,7 @@ export default function Clients() {
   const [history, setHistory] = useState({ clientId: null, commandes: [] });
   const [editingClientId, setEditingClientId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
+  const [catalogueToken, setCatalogueToken] = useState('');
 
   async function loadClients(query = search) {
     try {
@@ -23,7 +24,25 @@ export default function Clients() {
 
   useEffect(() => {
     loadClients('');
+    api.get('/catalogue-link')
+      .then((response) => setCatalogueToken(response.data.token))
+      .catch(() => setCatalogueToken(''));
   }, []);
+
+  async function copyClientCatalogLink(client) {
+    if (!catalogueToken || !client.catalogue_token) {
+      setMessage('Le lien personnel de ce client n’est pas encore disponible.');
+      return;
+    }
+
+    const link = `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}?client=${client.catalogue_token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setMessage(`Lien personnel de ${client.nom} copié. Ses coordonnées seront déjà remplies.`);
+    } catch {
+      setMessage(`Lien personnel : ${link}`);
+    }
+  }
 
   async function submitClient(event) {
     event.preventDefault();
@@ -101,6 +120,7 @@ export default function Clients() {
                     <p className="text-sm text-slate-600">{client.telephone}</p>
                   </div>
                   <div className="record-actions">
+                    <button type="button" onClick={() => copyClientCatalogLink(client)} className="secondary-button accent">Lien catalogue</button>
                     <button type="button" onClick={() => startEditing(client)} className="secondary-button">Corriger</button>
                     <button type="button" onClick={() => showHistory(client.id)} className="secondary-button accent">Historique</button>
                   </div>

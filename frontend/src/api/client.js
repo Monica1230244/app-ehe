@@ -152,10 +152,21 @@ async function get(path, options = {}) {
     return { data: { catalogue: { ...data, modeles: (data.modeles || []).map(publicStockModel) } } };
   }
 
+  const publicCatalogClientMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/clients\/([0-9a-f-]+)$/i);
+  if (publicCatalogClientMatch) {
+    const { data, error } = await supabase.rpc('get_catalogue_client', {
+      p_catalogue_token: publicCatalogClientMatch[1],
+      p_client_token: publicCatalogClientMatch[2]
+    });
+    if (error) throw apiError(error, 'Impossible de reconnaître ce client.');
+    if (!data) throw apiError(null, 'Ce lien client est invalide.');
+    return { data: { client: data } };
+  }
+
   if (path === '/demandes-catalogue') {
     const { data, error } = await supabase
       .from('demandes_catalogue')
-      .select('id, revendeur_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .select('id, revendeur_id, client_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
       .order('created_at', { ascending: false });
     if (error) throw apiError(error, 'Impossible de charger les demandes du catalogue.');
     const requests = await Promise.all(data.map(async (request) => ({
@@ -171,7 +182,7 @@ async function get(path, options = {}) {
   if (catalogRequestMatch) {
     const { data, error } = await supabase
       .from('demandes_catalogue')
-      .select('id, revendeur_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .select('id, revendeur_id, client_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
       .eq('id', Number(catalogRequestMatch[1]))
       .single();
     if (error) throw apiError(error, 'Demande de catalogue introuvable.');
@@ -442,8 +453,9 @@ async function post(path, body) {
 
   const publicCatalogRequestMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/demandes$/i);
   if (publicCatalogRequestMatch) {
-    const { data, error } = await supabase.rpc('submit_demande_catalogue', {
+    const { data, error } = await supabase.rpc('submit_demande_catalogue_v2', {
       p_token: publicCatalogRequestMatch[1],
+      p_client_token: body.client_token || null,
       p_nom_client: body.nom_client,
       p_telephone: body.telephone,
       p_note: body.note || null,

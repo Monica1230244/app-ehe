@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Brand from '../components/Brand';
 import api from '../api/client';
 
-const emptyCustomer = { nom_client: '', telephone: '', note: '' };
+const emptyCustomer = { civilite: '', nom_client: '', telephone: '', note: '' };
 
 function rememberedCustomerKey(catalogToken) {
   return `ehe_catalog_customer:${catalogToken}`;
@@ -12,8 +12,13 @@ function rememberedCustomerKey(catalogToken) {
 function readRememberedCustomer(catalogToken) {
   try {
     const remembered = JSON.parse(localStorage.getItem(rememberedCustomerKey(catalogToken)));
-    if (remembered?.nom_client && remembered?.telephone) {
-      return { ...emptyCustomer, nom_client: remembered.nom_client, telephone: remembered.telephone };
+    if (remembered?.civilite && remembered?.nom_client && remembered?.telephone) {
+      return {
+        ...emptyCustomer,
+        civilite: remembered.civilite,
+        nom_client: remembered.nom_client,
+        telephone: remembered.telephone
+      };
     }
   } catch {
     return null;
@@ -42,8 +47,31 @@ export default function PublicCatalog() {
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [customerRecognized, setCustomerRecognized] = useState(false);
+  const [activeClientToken, setActiveClientToken] = useState(clientToken);
+  const [personalLinkNotice, setPersonalLinkNotice] = useState('');
+  const [challenge, setChallenge] = useState(null);
+  const [challengeAnswer, setChallengeAnswer] = useState('');
+  const [challengeLoading, setChallengeLoading] = useState(true);
+  const [website, setWebsite] = useState('');
+
+  const loadChallenge = useCallback(async () => {
+    setChallengeLoading(true);
+    try {
+      const response = await api.get(`/catalogue-public/${token}/challenge`);
+      setChallenge(response.data.challenge);
+      setChallengeAnswer('');
+    } catch (requestError) {
+      setChallenge(null);
+      setError(requestError.response?.data?.error || 'Impossible de préparer la vérification anti-robot.');
+    } finally {
+      setChallengeLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
+    setLoading(true);
+    setCatalog(null);
+    setError('');
     api.get(`/catalogue-public/${token}`)
       .then((response) => setCatalog(response.data.catalogue))
       .catch((requestError) => setError(requestError.response?.data?.error || 'Impossible d’ouvrir ce catalogue.'))
@@ -51,6 +79,12 @@ export default function PublicCatalog() {
   }, [token]);
 
   useEffect(() => {
+    loadChallenge();
+  }, [loadChallenge]);
+
+  useEffect(() => {
+    setActiveClientToken(clientToken);
+    setPersonalLinkNotice('');
     const rememberedCustomer = readRememberedCustomer(token);
     if (rememberedCustomer) {
       setCustomer(rememberedCustomer);
@@ -63,7 +97,10 @@ export default function PublicCatalog() {
         setCustomer({ ...emptyCustomer, ...response.data.client });
         setCustomerRecognized(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        setActiveClientToken('');
+        setPersonalLinkNotice('Ce lien personnel a expiré. Vous pouvez toujours remplir vos coordonnées et utiliser le catalogue public.');
+      });
   }, [clientToken, token]);
 
   const filteredModels = useMemo(() => {
@@ -94,13 +131,20 @@ export default function PublicCatalog() {
       setError('Ajoutez au moins un modèle au panier.');
       return;
     }
+    if (!challenge || !challengeAnswer) {
+      setError('Répondez à la vérification anti-robot.');
+      return;
+    }
 
     setSending(true);
     setError('');
     try {
       await api.post(`/catalogue-public/${token}/demandes`, {
         ...customer,
-        client_token: clientToken || null,
+        client_token: activeClientToken || null,
+        challenge_id: challenge.id,
+        challenge_answer: challengeAnswer,
+        website,
         articles: cart.map((item) => ({
           modele_stock_id: item.modele.id,
           quantite: Number(item.quantite),
@@ -110,6 +154,7 @@ export default function PublicCatalog() {
       });
       try {
         localStorage.setItem(rememberedCustomerKey(token), JSON.stringify({
+          civilite: customer.civilite,
           nom_client: customer.nom_client.trim(),
           telephone: customer.telephone.trim()
         }));
@@ -117,9 +162,11 @@ export default function PublicCatalog() {
       setCustomerRecognized(true);
       setSent(true);
       setCart([]);
+      await loadChallenge();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (requestError) {
       setError(requestError.response?.data?.error || 'Impossible d’envoyer votre sélection.');
+      await loadChallenge();
     } finally {
       setSending(false);
     }
@@ -213,6 +260,7 @@ export default function PublicCatalog() {
 
                 <div className="public-customer-fields">
                   <h3>Vos coordonnées</h3>
+                  {personalLinkNotice && <p className="public-personal-link-notice">{personalLinkNotice}</p>}
                   {customerRecognized && (
                     <div className="public-customer-recognized">
                       <span>✓ Coordonnées reconnues</span>
@@ -222,17 +270,32 @@ export default function PublicCatalog() {
                           forgetRememberedCustomer(token);
                           setCustomer(emptyCustomer);
                           setCustomerRecognized(false);
+                          setActiveClientToken('');
                         }}
                       >Ce n’est pas moi</button>
                     </div>
                   )}
+                  <label>Civilité
+                    <select value={customer.civilite} onChange={(event) => setCustomer({ ...customer, civilite: event.target.value })} required>
+                      <option value="">Choisir</option>
+                      <option value="Mr">Mr</option>
+                      <option value="Mme">Mme</option>
+                    </select>
+                  </label>
                   <label>Nom complet<input value={customer.nom_client} onChange={(event) => setCustomer({ ...customer, nom_client: event.target.value })} maxLength="120" required /></label>
                   <label>Numéro de téléphone / WhatsApp<input type="tel" inputMode="tel" value={customer.telephone} onChange={(event) => setCustomer({ ...customer, telephone: event.target.value })} maxLength="30" required /></label>
                   <label>Message <small>Facultatif</small><textarea value={customer.note} onChange={(event) => setCustomer({ ...customer, note: event.target.value })} maxLength="1000" placeholder="Une précision sur votre sélection…" /></label>
+                  <label className="public-robot-check">Vérification anti-robot
+                    <span>{challengeLoading ? 'Préparation…' : challenge ? `Combien font ${challenge.question} ?` : 'Vérification indisponible'}</span>
+                    <input type="number" inputMode="numeric" value={challengeAnswer} onChange={(event) => setChallengeAnswer(event.target.value)} disabled={!challenge || challengeLoading} required />
+                  </label>
+                  <label className="catalogue-honeypot" aria-hidden="true">Site web
+                    <input value={website} onChange={(event) => setWebsite(event.target.value)} tabIndex="-1" autoComplete="off" />
+                  </label>
                 </div>
 
                 {error && <p className="public-catalog-error">{error}</p>}
-                <button className="public-cart-submit" disabled={sending}>{sending ? 'Envoi en cours…' : `Envoyer ma sélection · ${totalPairs} paire${totalPairs > 1 ? 's' : ''}`}</button>
+                <button className="public-cart-submit" disabled={sending || challengeLoading || !challenge}>{sending ? 'Envoi en cours…' : `Envoyer ma sélection · ${totalPairs} paire${totalPairs > 1 ? 's' : ''}`}</button>
                 <small className="public-cart-notice">Cette sélection est une demande. La commande sera confirmée avec EHE.</small>
               </form>
             )}

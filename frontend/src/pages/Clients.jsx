@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 
-const emptyForm = { nom: '', telephone: '' };
+const emptyForm = { civilite: '', nom: '', telephone: '' };
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
@@ -11,7 +11,6 @@ export default function Clients() {
   const [history, setHistory] = useState({ clientId: null, commandes: [] });
   const [editingClientId, setEditingClientId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
-  const [catalogueToken, setCatalogueToken] = useState('');
 
   async function loadClients(query = search) {
     try {
@@ -24,23 +23,25 @@ export default function Clients() {
 
   useEffect(() => {
     loadClients('');
-    api.get('/catalogue-link')
-      .then((response) => setCatalogueToken(response.data.token))
-      .catch(() => setCatalogueToken(''));
   }, []);
 
   async function copyClientCatalogLink(client) {
-    if (!catalogueToken || !client.catalogue_token) {
-      setMessage('Le lien personnel de ce client n’est pas encore disponible.');
-      return;
-    }
-
-    const link = `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}?client=${client.catalogue_token}`;
     try {
-      await navigator.clipboard.writeText(link);
-      setMessage(`Lien personnel de ${client.nom} copié. Ses coordonnées seront déjà remplies.`);
-    } catch {
-      setMessage(`Lien personnel : ${link}`);
+      const response = await api.post(`/clients/${client.id}/catalogue-link`, {});
+      const { catalogue_token: catalogueToken, token: clientToken, expires_at: expiresAt } = response.data;
+      const link = `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}?client=${clientToken}`;
+      setClients((current) => current.map((item) => item.id === client.id
+        ? { ...item, catalogue_token: clientToken, catalogue_token_expires_at: expiresAt }
+        : item));
+      const expiryLabel = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(expiresAt));
+      try {
+        await navigator.clipboard.writeText(link);
+        setMessage(`Nouveau lien personnel de ${client.nom} copié. Il est valable jusqu’au ${expiryLabel}.`);
+      } catch {
+        setMessage(`Lien personnel valable jusqu’au ${expiryLabel} : ${link}`);
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de copier le lien personnel.');
     }
   }
 
@@ -67,7 +68,7 @@ export default function Clients() {
 
   function startEditing(client) {
     setEditingClientId(client.id);
-    setEditForm({ nom: client.nom, telephone: client.telephone });
+    setEditForm({ civilite: client.civilite || '', nom: client.nom, telephone: client.telephone });
     setMessage('');
   }
 
@@ -88,10 +89,15 @@ export default function Clients() {
       <div className="page-header"><div><h1>Clients</h1><p>Centralisez les coordonnées et l’historique de chaque client.</p></div></div>
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold">Ajouter un client</h2>
-        <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={submitClient}>
+        <form className="mt-4 grid gap-3 md:grid-cols-3" onSubmit={submitClient}>
+          <select className="rounded border px-3 py-2" aria-label="Civilité" value={form.civilite} onChange={(event) => setForm({ ...form, civilite: event.target.value })} required>
+            <option value="">Civilité</option>
+            <option value="Mr">Mr</option>
+            <option value="Mme">Mme</option>
+          </select>
           <input className="rounded border px-3 py-2" placeholder="Nom complet" value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} required />
           <input className="rounded border px-3 py-2" placeholder="Téléphone" value={form.telephone} onChange={(event) => setForm({ ...form, telephone: event.target.value })} required />
-          <button className="rounded bg-blue-700 px-4 py-2 font-medium text-white md:col-span-2">Enregistrer le client</button>
+          <button className="rounded bg-blue-700 px-4 py-2 font-medium text-white md:col-span-3">Enregistrer le client</button>
         </form>
       </section>
 
@@ -106,6 +112,11 @@ export default function Clients() {
             <article key={client.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
               {editingClientId === client.id ? (
                 <form className="inline-edit-form" onSubmit={saveClient}>
+                  <select aria-label="Civilité du client" value={editForm.civilite} onChange={(event) => setEditForm({ ...editForm, civilite: event.target.value })} required>
+                    <option value="">Civilité</option>
+                    <option value="Mr">Mr</option>
+                    <option value="Mme">Mme</option>
+                  </select>
                   <input aria-label="Nom du client" value={editForm.nom} onChange={(event) => setEditForm({ ...editForm, nom: event.target.value })} required />
                   <input aria-label="Téléphone du client" value={editForm.telephone} onChange={(event) => setEditForm({ ...editForm, telephone: event.target.value })} required />
                   <div className="record-actions">
@@ -116,7 +127,7 @@ export default function Clients() {
               ) : (
                 <>
                   <div>
-                    <h2 className="font-semibold">{client.nom}</h2>
+                    <h2 className="font-semibold">{client.civilite ? `${client.civilite} ` : ''}{client.nom}</h2>
                     <p className="text-sm text-slate-600">{client.telephone}</p>
                   </div>
                   <div className="record-actions">

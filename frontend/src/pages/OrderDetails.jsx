@@ -19,7 +19,8 @@ function whatsappNumber(value) {
 
 function whatsappLink(commande) {
   const number = whatsappNumber(commande.client_telephone);
-  const message = `Bonjour ${commande.client_nom}, votre commande est prête. Pour organiser la livraison, merci de nous envoyer vos informations de livraison ici, en message privé sur WhatsApp. — EHE`;
+  const recipient = `${commande.client_civilite ? `${commande.client_civilite} ` : ''}${commande.client_nom}`;
+  const message = `Bonjour ${recipient}, votre commande est prête. Pour organiser la livraison, merci de nous envoyer vos informations de livraison ici, en message privé sur WhatsApp. — EHE`;
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 

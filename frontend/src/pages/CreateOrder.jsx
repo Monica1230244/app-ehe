@@ -139,6 +139,7 @@ export default function CreateOrder() {
       let clientId = form.client_id;
       if (sourceRequest && clientId === `demande-${sourceRequest.id}`) {
         const clientResponse = await api.post('/clients', {
+          civilite: sourceRequest.civilite,
           nom: sourceRequest.nom_client,
           telephone: sourceRequest.telephone
         });

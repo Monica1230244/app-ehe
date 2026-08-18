@@ -31,6 +31,7 @@ async function profileForUser(userId) {
 function formatCommande(commande) {
   return {
     ...commande,
+    client_civilite: commande.client?.civilite,
     client_nom: commande.client?.nom,
     client_telephone: commande.client?.telephone,
     cordonnier_nom: commande.cordonnier?.nom,
@@ -40,7 +41,7 @@ function formatCommande(commande) {
 
 const commandeSelection = `
   *,
-  client:clients!commandes_client_id_fkey(nom, telephone),
+  client:clients!commandes_client_id_fkey(civilite, nom, telephone),
   revendeur:profiles!commandes_revendeur_id_fkey(nom),
   cordonnier:profiles!commandes_cordonnier_id_fkey(nom)
 `;
@@ -163,10 +164,19 @@ async function get(path, options = {}) {
     return { data: { client: data } };
   }
 
+  const publicCatalogChallengeMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/challenge$/i);
+  if (publicCatalogChallengeMatch) {
+    const { data, error } = await supabase.rpc('create_catalogue_challenge', {
+      p_catalogue_token: publicCatalogChallengeMatch[1]
+    });
+    if (error) throw apiError(error, 'Impossible de préparer la vérification anti-robot.');
+    return { data: { challenge: data } };
+  }
+
   if (path === '/demandes-catalogue') {
     const { data, error } = await supabase
       .from('demandes_catalogue')
-      .select('id, revendeur_id, client_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
       .order('created_at', { ascending: false });
     if (error) throw apiError(error, 'Impossible de charger les demandes du catalogue.');
     const requests = await Promise.all(data.map(async (request) => ({
@@ -182,7 +192,7 @@ async function get(path, options = {}) {
   if (catalogRequestMatch) {
     const { data, error } = await supabase
       .from('demandes_catalogue')
-      .select('id, revendeur_id, client_id, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
       .eq('id', Number(catalogRequestMatch[1]))
       .single();
     if (error) throw apiError(error, 'Demande de catalogue introuvable.');
@@ -412,6 +422,7 @@ async function post(path, body) {
 
   if (path === '/clients') {
     const { data, error } = await supabase.from('clients').insert({
+      civilite: body.civilite,
       nom: body.nom,
       telephone: body.telephone
     }).select().single();
@@ -453,16 +464,30 @@ async function post(path, body) {
 
   const publicCatalogRequestMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/demandes$/i);
   if (publicCatalogRequestMatch) {
-    const { data, error } = await supabase.rpc('submit_demande_catalogue_v2', {
+    const { data, error } = await supabase.rpc('submit_demande_catalogue_v3', {
       p_token: publicCatalogRequestMatch[1],
       p_client_token: body.client_token || null,
+      p_civilite: body.civilite,
       p_nom_client: body.nom_client,
       p_telephone: body.telephone,
       p_note: body.note || null,
-      p_articles: body.articles
+      p_articles: body.articles,
+      p_challenge_id: body.challenge_id,
+      p_challenge_answer: body.challenge_answer === '' ? null : Number(body.challenge_answer),
+      p_website: body.website || null
     });
     if (error) throw apiError(error, 'Impossible d’envoyer votre sélection.');
-    return { data: { demande_id: data } };
+    if (!data?.ok) throw apiError({ message: data?.error }, 'Impossible d’envoyer votre sélection.');
+    return { data: { demande_id: data.demande_id } };
+  }
+
+  const clientCatalogLinkMatch = path.match(/^\/clients\/(\d+)\/catalogue-link$/);
+  if (clientCatalogLinkMatch) {
+    const { data, error } = await supabase.rpc('renew_client_catalogue_link', {
+      p_client_id: Number(clientCatalogLinkMatch[1])
+    });
+    if (error) throw apiError(error, 'Impossible de renouveler le lien personnel.');
+    return { data };
   }
 
   if (path === '/catalogue-link/rotate') {
@@ -582,7 +607,7 @@ async function patch(path, body = {}) {
   if (clientMatch) {
     const { data, error } = await supabase
       .from('clients')
-      .update({ nom: String(body.nom || '').trim(), telephone: String(body.telephone || '').trim() })
+      .update({ civilite: body.civilite, nom: String(body.nom || '').trim(), telephone: String(body.telephone || '').trim() })
       .eq('id', Number(clientMatch[1]))
       .select()
       .single();

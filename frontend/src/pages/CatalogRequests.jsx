@@ -76,7 +76,7 @@ export default function CatalogRequests() {
           return (
             <article className={`catalog-request-card status-${request.statut}`} key={request.id}>
               <header>
-                <div><span className={`catalog-request-status ${request.statut}`}>{statusLabels[request.statut]}</span><h2>{request.nom_client}</h2><a href={`tel:${request.telephone}`}>{request.telephone}</a></div>
+                <div><span className={`catalog-request-status ${request.statut}`}>{statusLabels[request.statut]}</span><h2>{request.civilite ? `${request.civilite} ` : ''}{request.nom_client}</h2><a href={`tel:${request.telephone}`}>{request.telephone}</a></div>
                 <div><strong>{totalPairs}</strong><span>paire{totalPairs > 1 ? 's' : ''}</span><time>{dateFormatter.format(new Date(request.created_at))}</time></div>
               </header>
 

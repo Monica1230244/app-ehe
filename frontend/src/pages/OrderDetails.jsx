@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import { sendPushForOrder } from '../services/pushNotifications';
 
@@ -58,6 +58,7 @@ function emptyEditArticle() {
 
 export default function OrderDetails({ user }) {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [commande, setCommande] = useState(null);
   const [articles, setArticles] = useState([]);
   const [photos, setPhotos] = useState([]);
@@ -70,6 +71,8 @@ export default function OrderDetails({ user }) {
   const [cordonniers, setCordonniers] = useState([]);
   const [stockModels, setStockModels] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmingDeletion, setConfirmingDeletion] = useState(false);
 
   async function loadOrder() {
     setLoading(true);
@@ -163,6 +166,20 @@ export default function OrderDetails({ user }) {
     }
   }
 
+  async function deleteOrder() {
+    setDeleting(true);
+    setMessage('');
+    try {
+      await api.delete(`/commandes/${id}`);
+      navigate('/orders', { replace: true });
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de supprimer cette commande.');
+      setConfirmingDeletion(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <div className="p-4">Chargement…</div>;
   if (!commande) return <div className="p-4"><p>{message || 'Commande introuvable.'}</p><Link className="mt-3 inline-block text-blue-700" to="/orders">Retour aux commandes</Link></div>;
 
@@ -170,9 +187,9 @@ export default function OrderDetails({ user }) {
   if (user.role === 'cordonnier' && commande.statut === 'en_attente') actions.push(['en_fabrication', 'Commencer la fabrication', 'bg-blue-700']);
   if (user.role === 'cordonnier' && commande.statut === 'en_fabrication') actions.push(['prete', 'Marquer comme prête', 'bg-emerald-700']);
   if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete') actions.push(['livree', 'Confirmer la livraison', 'bg-slate-900']);
-  if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente') actions.push(['annulee', 'Annuler la commande', 'bg-red-700']);
   const canNotifyClient = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete' && whatsappNumber(commande.client_telephone);
   const canEdit = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente';
+  const canDelete = ['revendeur', 'admin'].includes(user.role);
 
   return (
     <div className="page-shell max-w-4xl space-y-5">
@@ -240,11 +257,21 @@ export default function OrderDetails({ user }) {
           </div>
         )}
 
-        {(actions.length > 0 || canNotifyClient || canEdit) && !editing && (
+        {(actions.length > 0 || canNotifyClient || canEdit || canDelete) && !editing && (
           <div className="mt-5 flex flex-wrap gap-3">
             {canEdit && <button type="button" onClick={startEditing} className="secondary-button accent">Corriger la commande</button>}
             {actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}
             {canNotifyClient && <a className="whatsapp-button" href={whatsappLink(commande)} target="_blank" rel="noreferrer">Informer le client sur WhatsApp</a>}
+            {canDelete && !confirmingDeletion && <button type="button" onClick={() => setConfirmingDeletion(true)} className="secondary-button danger">Supprimer la commande</button>}
+          </div>
+        )}
+        {canDelete && confirmingDeletion && !editing && (
+          <div className="order-delete-confirmation" role="alert">
+            <div><strong>Supprimer définitivement cette commande ?</strong><p>Ses articles, photos, messages, alertes et données comptables seront également supprimés.</p></div>
+            <div className="record-actions">
+              <button type="button" className="delete-confirm-button" onClick={deleteOrder} disabled={deleting}>{deleting ? 'Suppression…' : 'Oui, supprimer'}</button>
+              <button type="button" className="secondary-button" onClick={() => setConfirmingDeletion(false)} disabled={deleting}>Conserver</button>
+            </div>
           </div>
         )}
       </section>

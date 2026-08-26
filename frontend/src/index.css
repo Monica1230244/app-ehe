@@ -586,6 +586,11 @@ small { font-size: .75rem; }
 .primary-button.compact { width: auto; min-height: 42px; padding: 9px 15px; border-radius: 11px; font-size: .78rem; }
 .secondary-button { min-height: 42px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: var(--surface); font-size: .78rem; font-weight: 750; }
 .secondary-button.accent { color: var(--primary); border-color: rgba(139,30,45,.35); }
+.secondary-button.danger { color: var(--danger); border-color: rgba(190,24,53,.28); background: #fff7f8; }
+.order-delete-confirmation { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(190,24,53,.24); border-radius: 14px; color: var(--text); background: #fff4f6; }
+.order-delete-confirmation p { margin: 4px 0 0; color: var(--muted); font-size: .75rem; }
+.delete-confirm-button { min-height: 42px; padding: 9px 14px; border-radius: 11px; color: #fff; background: var(--danger); font-size: .78rem; font-weight: 800; }
+.delete-confirm-button:disabled { opacity: .6; }
 .inline-edit-form { display: grid; width: 100%; grid-template-columns: 110px repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 10px; }
 .stock-edit-form { display: grid; gap: 9px; }
 .stock-edit-form textarea { min-height: 82px; }
@@ -851,6 +856,7 @@ small { font-size: .75rem; }
   .order-lines-section { padding: 13px; }
   .inline-edit-form, .team-edit-form, .order-edit-form { grid-template-columns: 1fr; }
   .order-edit-notes, .order-edit-actions { grid-column: auto; }
+  .order-delete-confirmation { align-items: stretch; flex-direction: column; }
   .team-member { grid-template-columns: 42px minmax(0, 1fr) auto; }
   .team-member > .team-status { grid-column: 2; }
   .team-member > .secondary-button { grid-column: 2 / -1; }

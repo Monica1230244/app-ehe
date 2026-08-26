@@ -693,10 +693,40 @@ async function patch(path, body = {}) {
   throw apiError(null, `Route non prise en charge : ${path}`);
 }
 
+async function remove(path) {
+  ensureConfigured();
+
+  const commandeMatch = path.match(/^\/commandes\/(\d+)$/);
+  if (commandeMatch) {
+    const commandeId = Number(commandeMatch[1]);
+    const { data: photos, error: photosError } = await supabase
+      .from('photos')
+      .select('storage_path')
+      .eq('commande_id', commandeId);
+    if (photosError) throw apiError(photosError, 'Impossible de préparer la suppression de cette commande.');
+
+    const storagePaths = photos
+      .map((photo) => photo.storage_path)
+      .filter((storagePath) => storagePath && !/^https?:\/\//i.test(storagePath));
+
+    if (storagePaths.length > 0) {
+      const { error: storageError } = await supabase.storage.from('commande-photos').remove(storagePaths);
+      if (storageError) throw apiError(storageError, 'Impossible de supprimer les photos de cette commande.');
+    }
+
+    const { error } = await supabase.rpc('delete_commande', { p_commande_id: commandeId });
+    if (error) throw apiError(error, 'Impossible de supprimer cette commande.');
+    return { data: { deleted: true } };
+  }
+
+  throw apiError(null, `Route non prise en charge : ${path}`);
+}
+
 const api = {
   get,
   post,
   patch,
+  delete: remove,
   async logout() {
     if (isSupabaseConfigured) await supabase.auth.signOut();
   }

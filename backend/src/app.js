@@ -22,7 +22,7 @@ app.use(
 );
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/', (req, res) => res.json({ ok: true, service: 'EHE ERP backend' }));
+app.get('/', (req, res) => res.json({ ok: true, service: 'EHE backend' }));
 app.get('/health', async (req, res) => {
   try {
     if (!useMemoryStore) {

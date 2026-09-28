@@ -1,4 +1,4 @@
-# EHE ERP
+# EHE
 
 Application PWA de gestion de fabrication de chaussures sur mesure. Elle permet au revendeur de gérer ses clients et commandes, et au cordonnier de suivre uniquement les commandes qui lui sont attribuées.
 

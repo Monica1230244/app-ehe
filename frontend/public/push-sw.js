@@ -6,7 +6,7 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data?.text() };
   }
 
-  event.waitUntil(self.registration.showNotification(payload.title || 'EHE ERP', {
+  event.waitUntil(self.registration.showNotification(payload.title || 'EHE', {
     body: payload.body || 'Vous avez une nouvelle notification.',
     icon: '/app-ehe/pwa-192x192.png',
     badge: '/app-ehe/pwa-192x192.png',

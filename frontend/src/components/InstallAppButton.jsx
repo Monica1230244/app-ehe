@@ -45,7 +45,7 @@ export default function InstallAppButton() {
 
   return (
     <button type="button" onClick={install} className="fixed bottom-4 left-4 z-50 rounded bg-blue-700 px-4 py-3 font-semibold text-white shadow-lg">
-      Installer EHE ERP
+      Installer EHE
     </button>
   );
 }

@@ -1,4 +1,4 @@
-# Checklist de livraison EHE ERP
+# Checklist de livraison EHE
 
 1. Configurer les fichiers `.env` avec un mot de passe PostgreSQL et un `JWT_SECRET` propres au client.
 2. Démarrer la base avec `docker compose up -d db`.

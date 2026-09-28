@@ -1,4 +1,4 @@
-# Mise en ligne EHE ERP
+# Mise en ligne EHE
 
 L’architecture en ligne utilise GitHub Pages pour la PWA et Supabase pour l’authentification, PostgreSQL, les photos et la synchronisation en temps réel.
 
@@ -35,7 +35,7 @@ Dans l’onglet `Actions` du dépôt, lancez manuellement le workflow `Deploy Su
 ## 4. Publier la PWA
 
 1. Dans `Settings > Pages`, sélectionnez `GitHub Actions` comme source.
-2. Dans l’onglet `Actions`, lancez `Deploy EHE ERP PWA`.
+2. Dans l’onglet `Actions`, lancez `Deploy EHE PWA`.
 3. L’application devient accessible à l’adresse :
    [https://monica1230244.github.io/app-ehe/](https://monica1230244.github.io/app-ehe/)
 

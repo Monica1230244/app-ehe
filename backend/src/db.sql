@@ -1,4 +1,4 @@
--- Schema PostgreSQL pour EHE ERP
+-- Schema PostgreSQL pour EHE
 -- Version 1.0 : MVP gestion commandes, photos, notifications et suivi fabrication
 
 CREATE TABLE users (

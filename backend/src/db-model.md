@@ -1,4 +1,4 @@
-# Modèle de données EHE ERP
+# Modèle de données EHE
 
 ## Rôles
 - revendeur : crée les commandes, gère les clients et suit l'avancement.

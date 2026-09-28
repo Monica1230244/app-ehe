@@ -13,7 +13,7 @@ export default function Brand({ inverse = false, compact = false }) {
     <div className={`brand-lockup${inverse ? ' brand-lockup-inverse' : ''}`}>
       <BrandMark inverse={inverse} small={compact} />
       <span>
-        <strong>EHE ERP</strong>
+        <strong>EHE</strong>
         {!compact && <small>Atelier & commandes</small>}
       </span>
     </div>

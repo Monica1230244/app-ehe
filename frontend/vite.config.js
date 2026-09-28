@@ -15,7 +15,7 @@ export default defineConfig({
         importScripts: ['push-sw.js']
       },
       manifest: {
-        name: 'EHE ERP',
+        name: 'EHE',
         short_name: 'EHE',
         description: 'Gestion de commandes de chaussures entre revendeur et cordonnier',
         lang: 'fr',

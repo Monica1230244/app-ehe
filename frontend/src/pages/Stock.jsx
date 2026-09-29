@@ -16,9 +16,12 @@ export default function Stock() {
   const [message, setMessage] = useState('');
   const [editingModelId, setEditingModelId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
+  const [editPhoto, setEditPhoto] = useState(null);
+  const [editPreview, setEditPreview] = useState('');
   const [catalogueToken, setCatalogueToken] = useState('');
   const [sharing, setSharing] = useState(false);
   const fileInput = useRef(null);
+  const editFileInput = useRef(null);
 
   useEffect(() => {
     api.get('/modeles-stock')
@@ -40,6 +43,16 @@ export default function Stock() {
     setPreview(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [photo]);
+
+  useEffect(() => {
+    if (!editPhoto) {
+      setEditPreview('');
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(editPhoto);
+    setEditPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [editPhoto]);
 
   const filteredModels = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('fr');
@@ -128,7 +141,16 @@ export default function Stock() {
       reference: modele.reference || '',
       description: modele.description || ''
     });
+    setEditPhoto(null);
+    if (editFileInput.current) editFileInput.current.value = '';
     setMessage('');
+  }
+
+  function cancelEditing() {
+    setEditingModelId(null);
+    setEditPhoto(null);
+    setEditPreview('');
+    if (editFileInput.current) editFileInput.current.value = '';
   }
 
   async function saveModel(event) {
@@ -136,10 +158,18 @@ export default function Stock() {
     setSaving(true);
     setMessage('');
     try {
-      const response = await api.patch(`/modeles-stock/${editingModelId}`, editForm);
+      let payload = editForm;
+      if (editPhoto) {
+        payload = new FormData();
+        payload.append('nom', editForm.nom);
+        payload.append('reference', editForm.reference);
+        payload.append('description', editForm.description);
+        payload.append('file', editPhoto);
+      }
+      const response = await api.patch(`/modeles-stock/${editingModelId}`, payload);
       setModeles((current) => current.map((modele) => modele.id === editingModelId ? response.data.modele : modele));
-      setEditingModelId(null);
-      setMessage('Modèle corrigé.');
+      cancelEditing();
+      setMessage('Modèle corrigé avec succès.');
     } catch (requestError) {
       setMessage(requestError.response?.data?.error || 'Impossible de modifier ce modèle.');
     } finally {
@@ -217,12 +247,17 @@ export default function Stock() {
                 <div className="stock-model-body">
                   {editingModelId === modele.id ? (
                     <form className="stock-edit-form" onSubmit={saveModel}>
+                      <label className="stock-edit-photo">
+                        <input ref={editFileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setEditPhoto(event.target.files?.[0] || null)} />
+                        <img src={editPreview || modele.photo_url} alt={'Aperçu de ' + modele.nom} />
+                        <span><strong>Modifier la photo</strong><small>JPG, PNG ou WebP · 5 Mo maximum</small></span>
+                      </label>
                       <input aria-label="Nom du modèle" value={editForm.nom} onChange={(event) => setEditForm({ ...editForm, nom: event.target.value })} maxLength="120" required />
                       <input aria-label="Référence du modèle" value={editForm.reference} onChange={(event) => setEditForm({ ...editForm, reference: event.target.value })} maxLength="60" placeholder="Référence facultative" />
                       <textarea aria-label="Description du modèle" value={editForm.description} onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} maxLength="1000" placeholder="Description facultative" />
                       <div className="record-actions">
                         <button type="submit" className="primary-button compact" disabled={saving}>Enregistrer</button>
-                        <button type="button" className="secondary-button" onClick={() => setEditingModelId(null)}>Annuler</button>
+                        <button type="button" className="secondary-button" onClick={cancelEditing}>Annuler</button>
                       </div>
                     </form>
                   ) : (

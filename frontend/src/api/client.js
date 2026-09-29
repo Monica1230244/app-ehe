@@ -251,6 +251,15 @@ async function get(path, options = {}) {
     return { data: { comptabilite: data } };
   }
 
+  if (path === '/paiements') {
+    const { data, error } = await supabase
+      .from('commande_paiements')
+      .select('id, commande_id, revendeur_id, montant, mode_paiement, reference, note, date_paiement, created_at')
+      .order('date_paiement', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger les paiements.');
+    return { data: { paiements: data } };
+  }
+
   if (path === '/articles-comptabilite') {
     const [{ data: articles, error: articlesError }, { data: entries, error: entriesError }] = await Promise.all([
       supabase
@@ -563,6 +572,20 @@ async function post(path, body) {
     return { data: { comptabilite: accounting, lignes: lines } };
   }
 
+  const paymentMatch = path.match(/^\/commandes\/(\d+)\/paiements$/);
+  if (paymentMatch) {
+    const { data, error } = await supabase.rpc('save_commande_paiement', {
+      p_commande_id: Number(paymentMatch[1]),
+      p_montant: Number(body.montant),
+      p_mode_paiement: body.mode_paiement,
+      p_reference: body.reference || null,
+      p_note: body.note || null,
+      p_date_paiement: body.date_paiement ? new Date(body.date_paiement + 'T12:00:00').toISOString() : new Date().toISOString()
+    });
+    if (error) throw apiError(error, 'Impossible d’enregistrer ce paiement.');
+    return { data: { paiement: data } };
+  }
+
   if (path === '/upload') {
     const commandeId = body.get('commande_id');
     const file = body.get('file');
@@ -617,17 +640,65 @@ async function patch(path, body = {}) {
 
   const stockModelDetailsMatch = path.match(/^\/modeles-stock\/(\d+)$/);
   if (stockModelDetailsMatch) {
+    const modelId = Number(stockModelDetailsMatch[1]);
+    const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;
+    const nom = String(isMultipart ? body.get('nom') : body.nom || '').trim();
+    const reference = String(isMultipart ? body.get('reference') : body.reference || '').trim();
+    const description = String(isMultipart ? body.get('description') : body.description || '').trim();
+    const file = isMultipart ? body.get('file') : null;
+
+    if (!nom) throw apiError(null, 'Le nom du modèle est obligatoire.');
+
+    const changes = {
+      nom,
+      reference: reference || null,
+      description: description || null
+    };
+    let previousPhotoPath = null;
+    let uploadedPhotoPath = null;
+
+    if (file && file.size > 0) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        throw apiError(null, 'La nouvelle photo doit être au format JPG, PNG ou WebP.');
+      }
+      if (file.size > 5242880) throw apiError(null, 'La nouvelle photo ne doit pas dépasser 5 Mo.');
+
+      const [{ data: currentModel, error: modelError }, { data: authData, error: authError }] = await Promise.all([
+        supabase.from('modeles_stock').select('photo_path').eq('id', modelId).single(),
+        supabase.auth.getUser()
+      ]);
+      if (modelError) throw apiError(modelError, 'Modèle introuvable.');
+      if (authError || !authData.user) throw apiError(authError, 'Session expirée.');
+
+      previousPhotoPath = currentModel.photo_path;
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      uploadedPhotoPath = authData.user.id + '/' + crypto.randomUUID() + '-' + safeName;
+      const { error: uploadError } = await supabase.storage.from('modele-photos').upload(uploadedPhotoPath, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false
+      });
+      if (uploadError) throw apiError(uploadError, 'Impossible d’envoyer la nouvelle photo.');
+
+      changes.photo_path = uploadedPhotoPath;
+      changes.file_name = file.name;
+    }
+
     const { data, error } = await supabase
       .from('modeles_stock')
-      .update({
-        nom: String(body.nom || '').trim(),
-        reference: String(body.reference || '').trim() || null,
-        description: String(body.description || '').trim() || null
-      })
-      .eq('id', Number(stockModelDetailsMatch[1]))
+      .update(changes)
+      .eq('id', modelId)
       .select()
       .single();
-    if (error) throw apiError(error, 'Impossible de modifier ce modèle.');
+    if (error) {
+      if (uploadedPhotoPath) await supabase.storage.from('modele-photos').remove([uploadedPhotoPath]);
+      throw apiError(error, 'Impossible de modifier ce modèle.');
+    }
+
+    if (uploadedPhotoPath && previousPhotoPath && previousPhotoPath !== uploadedPhotoPath) {
+      await supabase.storage.from('modele-photos').remove([previousPhotoPath]);
+    }
+
     return { data: { modele: await signedStockModel(data) } };
   }
 
@@ -695,6 +766,13 @@ async function patch(path, body = {}) {
 
 async function remove(path) {
   ensureConfigured();
+
+  const paymentMatch = path.match(/^\/paiements\/(\d+)$/);
+  if (paymentMatch) {
+    const { error } = await supabase.rpc('delete_commande_paiement', { p_paiement_id: Number(paymentMatch[1]) });
+    if (error) throw apiError(error, 'Impossible de supprimer ce paiement.');
+    return { data: { deleted: true } };
+  }
 
   const commandeMatch = path.match(/^\/commandes\/(\d+)$/);
   if (commandeMatch) {

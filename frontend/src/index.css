@@ -1155,3 +1155,34 @@ small { font-size: .75rem; }
   .receipt-footer > div { width: 170px; padding-top: 35px; border-top: 1px solid #745f66; text-align: center; }
   .receipt-footer span, .receipt-footer p { color: #745f66; font-size: 10px; }
 }
+
+
+.photo-thumb-button { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; border: 0; border-radius: 12px; background: transparent; cursor: zoom-in; }
+.photo-thumb-button img { display: block; width: 100%; height: 150px; object-fit: cover; transition: transform .2s ease; }
+.photo-thumb-button:hover img, .photo-thumb-button:focus-visible img { transform: scale(1.03); }
+.order-item-detail-card > .photo-thumb-button { width: calc(100% + 28px); margin: -14px -14px 13px; border-radius: 0; }
+.photo-thumb-zoom { position: absolute; right: 8px; bottom: 8px; padding: 4px 7px; border-radius: 7px; color: #fff; background: rgba(36, 21, 26, .72); font-size: .62rem; font-weight: 750; }
+.photo-gallery-card { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+.photo-gallery-card .photo-thumb-button img { height: 180px; }
+.photo-gallery-card figcaption { padding: 9px 10px; color: var(--text); font-size: .72rem; font-weight: 750; }
+.fabrication-photo-form { display: grid; gap: 14px; margin-top: 18px; padding: 16px; border: 1px solid rgba(31, 132, 91, .24); border-radius: 16px; background: #f0fbf6; }
+.fabrication-photo-form h2, .fabrication-photo-form p { margin: 0; }
+.fabrication-photo-form h2 { color: #176d4a; font-size: .95rem; }
+.fabrication-photo-form p { margin-top: 4px; color: var(--muted); font-size: .76rem; }
+.fabrication-photo-picker { display: grid; place-items: center; min-height: 86px; padding: 14px; border: 1px dashed #62a98a; border-radius: 12px; color: #176d4a; background: rgba(255, 255, 255, .72); font-size: .8rem; font-weight: 800; cursor: pointer; }
+.fabrication-photo-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.fabrication-photo-preview { max-width: 230px; }
+.fabrication-photo-preview img { height: 180px; }
+.photo-lightbox { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(25, 12, 16, .86); }
+.photo-lightbox-content { position: relative; max-width: min(94vw, 900px); max-height: 94vh; padding: 12px; border-radius: 16px; background: var(--surface); box-shadow: 0 24px 70px rgba(0, 0, 0, .35); }
+.photo-lightbox-content img { display: block; max-width: min(90vw, 860px); max-height: 82vh; object-fit: contain; border-radius: 10px; }
+.photo-lightbox-content p { margin: 9px 4px 0; color: var(--text); font-size: .78rem; font-weight: 750; }
+.photo-lightbox-close { position: absolute; z-index: 1; top: -13px; right: -13px; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid var(--surface); border-radius: 50%; color: #fff; background: var(--primary); font-size: 1.25rem; line-height: 1; cursor: pointer; }
+
+@media (max-width: 620px) {
+  .photo-lightbox { padding: 14px; }
+  .photo-lightbox-content { max-width: 96vw; padding: 8px; }
+  .photo-lightbox-content img { max-width: 92vw; max-height: 78vh; }
+  .fabrication-photo-form .record-actions { align-items: stretch; flex-direction: column; }
+  .fabrication-photo-form .record-actions button { width: 100%; }
+}

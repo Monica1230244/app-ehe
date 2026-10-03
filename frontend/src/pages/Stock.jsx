@@ -20,6 +20,7 @@ export default function Stock() {
   const [editPreview, setEditPreview] = useState('');
   const [catalogueToken, setCatalogueToken] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [activePhoto, setActivePhoto] = useState(null);
   const fileInput = useRef(null);
   const editFileInput = useRef(null);
 
@@ -241,7 +242,10 @@ export default function Stock() {
             {filteredModels.map((modele) => (
               <article key={modele.id} className={`stock-model-card${modele.is_active ? '' : ' archived'}`}>
                 <div className="stock-model-photo">
-                  <img src={modele.photo_url} alt={modele.nom} />
+                  <button type="button" className="stock-model-photo-button" onClick={() => setActivePhoto({ storage_path: modele.photo_url, nom: modele.nom })} aria-label={`Agrandir la photo de ${modele.nom}`}>
+                    <img src={modele.photo_url} alt={modele.nom} />
+                    <span className="photo-thumb-zoom">Agrandir</span>
+                  </button>
                   <span>{modele.is_active ? 'Disponible' : 'Archivé'}</span>
                 </div>
                 <div className="stock-model-body">
@@ -278,6 +282,15 @@ export default function Stock() {
         )}
       </section>
       {message && <p className="stock-feedback" role="status">{message}</p>}
+      {activePhoto && (
+        <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`Photo de ${activePhoto.nom}`} onClick={() => setActivePhoto(null)}>
+          <div className="photo-lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="photo-lightbox-close" onClick={() => setActivePhoto(null)} aria-label="Fermer">×</button>
+            <img src={activePhoto.storage_path} alt={activePhoto.nom} />
+            <p>{activePhoto.nom}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

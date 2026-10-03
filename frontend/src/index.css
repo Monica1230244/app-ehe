@@ -1186,3 +1186,8 @@ small { font-size: .75rem; }
   .fabrication-photo-form .record-actions { align-items: stretch; flex-direction: column; }
   .fabrication-photo-form .record-actions button { width: 100%; }
 }
+
+
+.stock-model-photo-button { position: absolute; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.stock-model-photo-button:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+.stock-model-photo .photo-thumb-zoom { top: auto; right: 8px; bottom: 8px; }

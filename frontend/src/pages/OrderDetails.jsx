@@ -56,6 +56,30 @@ function emptyEditArticle() {
   };
 }
 
+function photoLabel(type) {
+  return {
+    modele: 'Photo du modèle',
+    pied_gauche: 'Photo du pied gauche',
+    pied_droit: 'Photo du pied droit',
+    fabrication: 'Photo de la chaussure fabriquée',
+    autre: 'Photo complémentaire'
+  }[type] || 'Photo';
+}
+
+function PhotoButton({ photo, onOpen, className = '' }) {
+  return (
+    <button
+      type="button"
+      className={`photo-thumb-button ${className}`}
+      onClick={() => onOpen(photo)}
+      aria-label={`Agrandir ${photoLabel(photo.type_photo)}`}
+    >
+      <img src={photo.storage_path} alt={photoLabel(photo.type_photo)} />
+      <span className="photo-thumb-zoom">Agrandir</span>
+    </button>
+  );
+}
+
 export default function OrderDetails({ user }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,6 +97,11 @@ export default function OrderDetails({ user }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
+  const [activePhoto, setActivePhoto] = useState(null);
+  const [readyPhotoFile, setReadyPhotoFile] = useState(null);
+  const [readyPhotoPreview, setReadyPhotoPreview] = useState('');
+  const [showReadyPhotoForm, setShowReadyPhotoForm] = useState(false);
+  const [uploadingReadyPhoto, setUploadingReadyPhoto] = useState(false);
 
   async function loadOrder() {
     setLoading(true);
@@ -98,6 +127,10 @@ export default function OrderDetails({ user }) {
     loadOrder();
   }, [id]);
 
+  useEffect(() => () => {
+    if (readyPhotoPreview) URL.revokeObjectURL(readyPhotoPreview);
+  }, [readyPhotoPreview]);
+
   async function changeStatus(statut) {
     try {
       const response = await api.patch(`/commandes/${id}/status`, { statut });
@@ -105,8 +138,64 @@ export default function OrderDetails({ user }) {
       setMessage('Statut mis à jour.');
       await sendPushForOrder(id, 'status_changed');
       await loadOrder();
+      return true;
     } catch (error) {
       setMessage(error.response?.data?.error || 'Cette mise à jour est impossible.');
+      return false;
+    }
+  }
+
+  function selectReadyPhoto(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('La photo doit être au format JPG, PNG ou WebP.');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 5242880) {
+      setMessage('La photo ne doit pas dépasser 5 Mo.');
+      event.target.value = '';
+      return;
+    }
+    setReadyPhotoFile(file);
+    setReadyPhotoPreview(URL.createObjectURL(file));
+    setMessage('');
+  }
+
+  async function finishManufacturing() {
+    const existingPhoto = photos.find((photo) => photo.type_photo === 'fabrication');
+    if (!existingPhoto && !readyPhotoFile) {
+      setMessage('Ajoutez une photo de la chaussure fabriquée avant de prévenir le revendeur.');
+      return;
+    }
+
+    setUploadingReadyPhoto(true);
+    setMessage('');
+    try {
+      if (!existingPhoto && readyPhotoFile) {
+        const formData = new FormData();
+        formData.append('commande_id', id);
+        formData.append('file', readyPhotoFile);
+        const uploadResponse = await api.post('/upload', formData);
+        await api.post('/photos', {
+          commande_id: id,
+          type_photo: 'fabrication',
+          storage_path: uploadResponse.data.file.url,
+          file_name: readyPhotoFile.name
+        });
+      }
+
+      const changed = await changeStatus('prete');
+      if (changed) {
+        setShowReadyPhotoForm(false);
+        setReadyPhotoFile(null);
+        setReadyPhotoPreview('');
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible d’envoyer la photo de fabrication.');
+    } finally {
+      setUploadingReadyPhoto(false);
     }
   }
 
@@ -185,7 +274,7 @@ export default function OrderDetails({ user }) {
 
   const actions = [];
   if (user.role === 'cordonnier' && commande.statut === 'en_attente') actions.push(['en_fabrication', 'Commencer la fabrication', 'bg-blue-700']);
-  if (user.role === 'cordonnier' && commande.statut === 'en_fabrication') actions.push(['prete', 'Marquer comme prête', 'bg-emerald-700']);
+  const canCompleteManufacturing = user.role === 'cordonnier' && commande.statut === 'en_fabrication';
   if (['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete') actions.push(['livree', 'Confirmer la livraison', 'bg-slate-900']);
   const canNotifyClient = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete' && whatsappNumber(commande.client_telephone);
   const canEdit = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente';
@@ -239,7 +328,7 @@ export default function OrderDetails({ user }) {
             <div className="order-items-grid">
               {articles.map((article, index) => (
                 <article key={article.id} className="order-item-detail-card">
-                  {article.modele_stock?.photo_url && <img src={article.modele_stock.photo_url} alt={article.modele} />}
+                  {article.modele_stock?.photo_url && <PhotoButton photo={{ storage_path: article.modele_stock.photo_url, type_photo: 'modele' }} onOpen={setActivePhoto} />}
                   <div className="order-item-detail-heading"><span>Ligne {index + 1}</span><strong>{article.quantite} paire{article.quantite > 1 ? 's' : ''}</strong></div>
                   <h3>{article.modele}</h3>
                   <dl>
@@ -261,10 +350,29 @@ export default function OrderDetails({ user }) {
           <div className="mt-5 flex flex-wrap gap-3">
             {canEdit && <button type="button" onClick={startEditing} className="secondary-button accent">Corriger la commande</button>}
             {actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}
+            {canCompleteManufacturing && <button type="button" onClick={() => { setShowReadyPhotoForm(true); setMessage(''); }} className="rounded bg-emerald-700 px-4 py-2 font-medium text-white">Ajouter la photo et informer le revendeur</button>}
             {canNotifyClient && <a className="whatsapp-button" href={whatsappLink(commande)} target="_blank" rel="noreferrer">Informer le client sur WhatsApp</a>}
             {canDelete && !confirmingDeletion && <button type="button" onClick={() => setConfirmingDeletion(true)} className="secondary-button danger">Supprimer la commande</button>}
           </div>
         )}
+        {showReadyPhotoForm && canCompleteManufacturing && !editing && (
+          <section className="fabrication-photo-form" aria-live="polite">
+            <div>
+              <h2>Photo de la chaussure terminée</h2>
+              <p>Cette photo sera envoyée au revendeur avec la notification « commande prête ».</p>
+            </div>
+            <label className="fabrication-photo-picker">
+              <span>{readyPhotoFile ? 'Changer la photo' : 'Prendre ou choisir une photo'}</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={selectReadyPhoto} />
+            </label>
+            {readyPhotoPreview && <PhotoButton photo={{ storage_path: readyPhotoPreview, type_photo: 'fabrication' }} onOpen={setActivePhoto} className="fabrication-photo-preview" />}
+            <div className="record-actions">
+              <button type="button" className="primary-button compact" onClick={finishManufacturing} disabled={uploadingReadyPhoto}>{uploadingReadyPhoto ? 'Envoi en cours…' : 'Envoyer et marquer comme prête'}</button>
+              <button type="button" className="secondary-button" onClick={() => setShowReadyPhotoForm(false)} disabled={uploadingReadyPhoto}>Annuler</button>
+            </div>
+          </section>
+        )}
+
         {canDelete && confirmingDeletion && !editing && (
           <div className="order-delete-confirmation" role="alert">
             <div><strong>Supprimer définitivement cette commande ?</strong><p>Ses articles, photos, messages, alertes et données comptables seront également supprimés.</p></div>
@@ -280,7 +388,7 @@ export default function OrderDetails({ user }) {
         <h2 className="text-lg font-bold">Photos de fabrication</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {photos.length === 0 && <p className="text-sm text-slate-600">Aucune photo jointe.</p>}
-          {photos.map((photo) => <figure key={photo.id} className="overflow-hidden rounded border"><img className="aspect-square w-full object-cover" src={photo.storage_path} alt={photo.type_photo.replace('_', ' ')} /><figcaption className="p-2 text-sm capitalize">{photo.type_photo.replace('_', ' ')}</figcaption></figure>)}
+          {photos.map((photo) => <figure key={photo.id} className="photo-gallery-card"><PhotoButton photo={photo} onOpen={setActivePhoto} /><figcaption>{photoLabel(photo.type_photo)}</figcaption></figure>)}
         </div>
       </section>
 
@@ -291,6 +399,15 @@ export default function OrderDetails({ user }) {
         </ol>
       </section>
       {message && <p className="text-sm text-slate-700">{message}</p>}
+      {activePhoto && (
+        <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={photoLabel(activePhoto.type_photo)} onClick={() => setActivePhoto(null)}>
+          <div className="photo-lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="photo-lightbox-close" onClick={() => setActivePhoto(null)} aria-label="Fermer">×</button>
+            <img src={activePhoto.storage_path} alt={photoLabel(activePhoto.type_photo)} />
+            <p>{photoLabel(activePhoto.type_photo)}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

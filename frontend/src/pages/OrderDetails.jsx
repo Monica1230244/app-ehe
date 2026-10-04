@@ -346,7 +346,7 @@ export default function OrderDetails({ user }) {
           </div>
         )}
 
-        {(actions.length > 0 || canNotifyClient || canEdit || canDelete) && !editing && (
+        {(actions.length > 0 || canCompleteManufacturing || canNotifyClient || canEdit || canDelete) && !editing && (
           <div className="mt-5 flex flex-wrap gap-3">
             {canEdit && <button type="button" onClick={startEditing} className="secondary-button accent">Corriger la commande</button>}
             {actions.map(([status, label, className]) => <button key={status} type="button" onClick={() => changeStatus(status)} className={`rounded px-4 py-2 font-medium text-white ${className}`}>{label}</button>)}

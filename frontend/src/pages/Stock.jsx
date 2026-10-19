@@ -328,8 +328,8 @@ export default function Stock() {
 
   async function saveModel(event) {
     event.preventDefault();
-    if (editForm.couleurs.some((variant) => !variant.photo && !variant.photo_url)) {
-      setMessage('Ajoutez une photo à chaque couleur avant d’enregistrer.');
+    if (editForm.couleurs.some((variant) => !variant.id && !variant.photo && !variant.photo_url)) {
+      setMessage('Ajoutez une photo à chaque nouvelle couleur avant d’enregistrer.');
       return;
     }
 

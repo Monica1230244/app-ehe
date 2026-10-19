@@ -440,7 +440,7 @@ export default function Stock() {
                       <p>{modele.description || 'Aucune description ajoutée.'}</p>
                       {modele.couleurs?.length > 0 && (
                         <div className="stock-model-colors">
-                          <span>Variantes disponibles</span>
+                          <span>Variantes disponibles · {modele.couleurs.length} couleur{modele.couleurs.length > 1 ? 's' : ''}</span>
                           <div>
                             {modele.couleurs.map((variant) => (
                               <button type="button" key={variant.id || variant.couleur} onClick={() => openModelGallery(modele, variant.id || variant.couleur)}>

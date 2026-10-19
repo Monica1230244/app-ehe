@@ -84,9 +84,15 @@ function parseColors(value) {
   }
 
   if (!Array.isArray(candidate)) return [];
-  return [...new Set(candidate
+  const seen = new Set();
+  return candidate
     .map((color) => typeof color === 'string' ? color.trim() : color?.couleur?.trim())
-    .filter(Boolean))]
+    .filter((color) => {
+      const normalized = color?.toLocaleLowerCase('fr');
+      if (!normalized || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    })
     .slice(0, 30);
 }
 

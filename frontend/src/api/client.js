@@ -463,6 +463,52 @@ async function get(path, options = {}) {
 async function post(path, body) {
   ensureConfigured();
 
+  if (path === '/auth/login') {
+    const email = String(body?.email || '').trim().toLowerCase();
+    const password = String(body?.password || '');
+    if (!email || !password) throw apiError(null, 'Saisissez votre email et votre mot de passe.');
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) throw apiError(error, 'Email ou mot de passe incorrect.');
+
+    const user = await profileForUser(data.user.id);
+    return {
+      data: {
+        token: data.session?.access_token || '',
+        user
+      }
+    };
+  }
+
+  if (path === '/auth/register') {
+    const nom = String(body?.nom || '').trim();
+    const email = String(body?.email || '').trim().toLowerCase();
+    const password = String(body?.password || '');
+    if (!nom || !email || password.length < 8) {
+      throw apiError(null, 'Renseignez votre nom, un email valide et un mot de passe de 8 caractères minimum.');
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { nom } }
+    });
+    if (error || !data.user) throw apiError(error, 'Impossible de créer ce compte.');
+
+    if (!data.session) {
+      return { data: { requiresEmailConfirmation: true } };
+    }
+
+    const user = await profileForUser(data.user.id);
+    return {
+      data: {
+        requiresEmailConfirmation: false,
+        token: data.session.access_token,
+        user
+      }
+    };
+  }
+
   if (path === '/modeles-stock') {
     const file = body.get('file');
     const nom = String(body.get('nom') || '').trim();

@@ -432,7 +432,7 @@ async function patch(path, body = {}) {
     return { data: { client: data } };
   }
 
-  const stockModelDetailsMatch = path.match(/^\\/modeles-stock\\/(\\d+)$/);
+  const stockModelDetailsMatch = path.match(/^\/modeles-stock\/(\d+)$/);
   if (stockModelDetailsMatch) {
     const modelId = Number(stockModelDetailsMatch[1]);
     const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;

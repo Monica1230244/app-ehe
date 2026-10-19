@@ -439,18 +439,7 @@ export default function Stock() {
                       <div><h3>{modele.nom}</h3>{modele.reference && <small>{modele.reference}</small>}</div>
                       <p>{modele.description || 'Aucune description ajoutée.'}</p>
                       {modele.couleurs?.length > 0 && (
-                        <div className="stock-model-colors">
-                          <span>Variantes disponibles</span>
-                          <div>
-                            {modele.couleurs.map((variant) => (
-                              <button type="button" key={variant.id || variant.couleur} onClick={() => openModelGallery(modele, variant.id || variant.couleur)}>
-                                <VariantPhotoPreview variant={variant} alt={variant.couleur} />
-                                <b>{variant.couleur}</b>
-                                <small>{variant.quantite} paire{Number(variant.quantite) > 1 ? 's' : ''}</small>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                        <small className="stock-model-gallery-hint">Cliquez sur la photo principale pour voir toutes les couleurs.</small>
                       )}
                       <div className="stock-model-actions">
                         {modele.is_active && <Link className="stock-use-button" to={`/create-order?modele=${modele.id}`}>Utiliser pour une commande</Link>}

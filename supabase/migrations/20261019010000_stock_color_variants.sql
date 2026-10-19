@@ -29,7 +29,9 @@ alter table public.demande_catalogue_articles
   references public.modele_stock_couleurs(id)
   on delete set null;
 
-drop index if exists public.demande_catalogue_articles_demande_id_modele_stock_id_key;
+alter table public.demande_catalogue_articles
+  drop constraint if exists demande_catalogue_articles_demande_id_modele_stock_id_key;
+
 drop index if exists public.idx_demande_catalogue_articles_model_unique;
 
 create unique index if not exists idx_demande_catalogue_articles_variant_unique

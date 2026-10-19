@@ -192,6 +192,12 @@ async function get(path, options = {}) {
     return { data: { clients } };
   }
 
+  if (path === '/modeles-stock/next-reference') {
+    const { data, error } = await supabase.rpc('get_next_modele_stock_reference');
+    if (error) throw apiError(error, 'Impossible de calculer le prochain numéro du stock.');
+    return { data: { reference: data } };
+  }
+
   if (path === '/modeles-stock') {
     let query = supabase
       .from('modeles_stock')

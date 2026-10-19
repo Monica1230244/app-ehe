@@ -14,6 +14,7 @@ function newArticle(values = {}) {
   return {
     key: crypto.randomUUID(),
     modele_stock_id: '',
+    modele_stock_couleur_id: '',
     modele: '',
     pointure: '',
     couleur: '',
@@ -69,6 +70,7 @@ export default function CreateOrder() {
           });
           setArticles(request.articles.map((article) => newArticle({
             modele_stock_id: String(article.modele_stock_id),
+            modele_stock_couleur_id: article.modele_stock_couleur_id ? String(article.modele_stock_couleur_id) : '',
             modele: article.modele?.nom || '',
             pointure: article.pointure || '',
             couleur: article.couleur || '',
@@ -107,12 +109,27 @@ export default function CreateOrder() {
   function selectStockModel(articleKey, modelId) {
     const selectedModel = stockModels.find((model) => String(model.id) === modelId);
     const availableColors = selectedModel?.couleurs || [];
+    const selectedColor = availableColors.length === 1 ? availableColors[0] : null;
     setArticles((current) => current.map((article) => article.key === articleKey ? {
       ...article,
       modele_stock_id: modelId,
+      modele_stock_couleur_id: selectedColor?.id ? String(selectedColor.id) : '',
       modele: selectedModel?.nom || '',
-      couleur: availableColors.length === 1 ? availableColors[0].couleur : ''
+      couleur: selectedColor?.couleur || ''
     } : article));
+  }
+
+  function selectStockColor(articleKey, colorId) {
+    setArticles((current) => current.map((article) => {
+      if (article.key !== articleKey) return article;
+      const selectedModel = stockModels.find((model) => String(model.id) === article.modele_stock_id);
+      const selectedColor = selectedModel?.couleurs?.find((color) => String(color.id) === colorId);
+      return {
+        ...article,
+        modele_stock_couleur_id: selectedColor?.id ? String(selectedColor.id) : '',
+        couleur: selectedColor?.couleur || (colorId === 'Autre' ? 'Autre' : '')
+      };
+    }));
   }
 
   async function uploadPhoto(commandeId, typePhoto, file) {
@@ -219,9 +236,9 @@ export default function CreateOrder() {
                     <label>Pointure<input value={article.pointure} onChange={(event) => updateArticle(article.key, 'pointure', event.target.value)} required /></label>
                     <label>Couleur
                       {selectedModel?.couleurs?.length > 0 ? (
-                        <select value={article.couleur} onChange={(event) => updateArticle(article.key, 'couleur', event.target.value)} required>
+                        <select value={article.modele_stock_couleur_id} onChange={(event) => selectStockColor(article.key, event.target.value)} required>
                           <option value="">Choisir une couleur</option>
-                          {selectedModel.couleurs.map((color) => <option key={color.id || color.couleur} value={color.couleur}>{color.couleur}</option>)}
+                          {selectedModel.couleurs.map((color) => <option key={color.id || color.couleur} value={color.id}>{color.couleur} · {color.quantite} paire{Number(color.quantite) > 1 ? 's' : ''}</option>)}
                           <option value="Autre">Autre couleur</option>
                         </select>
                       ) : (
@@ -232,7 +249,10 @@ export default function CreateOrder() {
                     <label>Semelle<input value={article.semelle} onChange={(event) => updateArticle(article.key, 'semelle', event.target.value)} required /></label>
                     <label>Nombre de paires<input type="number" min="1" value={article.quantite} onChange={(event) => updateArticle(article.key, 'quantite', event.target.value)} required /></label>
                   </div>
-                  {selectedModel && <div className="order-line-model-preview"><img src={selectedModel.photo_url} alt="" /><span><strong>{selectedModel.nom}</strong><small>Modèle sélectionné dans la galerie</small></span></div>}
+                  {selectedModel && (() => {
+                    const selectedColor = selectedModel.couleurs?.find((color) => String(color.id) === String(article.modele_stock_couleur_id));
+                    return <div className="order-line-model-preview"><img src={selectedColor?.photo_url || selectedModel.photo_url} alt="" /><span><strong>{selectedModel.nom}{selectedColor ? ' — ' + selectedColor.couleur : ''}</strong><small>{selectedColor ? selectedColor.quantite + ' paire(s) disponible(s) dans le stock' : 'Modèle sélectionné dans la galerie'}</small></span></div>;
+                  })()}
                 </article>
               );
             })}

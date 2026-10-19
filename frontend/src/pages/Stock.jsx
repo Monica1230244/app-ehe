@@ -205,6 +205,13 @@ export default function Stock() {
   }, [filter, modeles, search]);
 
   const activeCount = modeles.filter((modele) => modele.is_active).length;
+  const nextReference = useMemo(() => {
+    const highestNumber = modeles.reduce((highest, modele) => {
+      const match = String(modele.reference || '').match(/^EHE-(\d+)$/i);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    return `EHE-${String(highestNumber + 1).padStart(3, '0')}`;
+  }, [modeles]);
   const catalogueLink = catalogueToken ? `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}` : '';
 
   const activeGalleryPhoto = activePhoto?.photos?.[activePhoto.index] || null;
@@ -374,7 +381,7 @@ export default function Stock() {
           <div className="stock-form-fields">
             <div className="stock-form-grid">
               <label>Nom du modèle<input value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} placeholder="Ex. Mocassin Élégance" maxLength="120" required /></label>
-              <div className="stock-auto-reference"><span>Numéro automatique</span><strong>Attribué après l’enregistrement</strong></div>
+              <div className="stock-auto-reference"><span>Numérotation automatique</span><strong>{nextReference}</strong><small>Attribué par la base à l’enregistrement, sans doublon.</small></div>
             </div>
             <label>Description <small>Facultative</small><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Style, particularités ou recommandations…" maxLength="1000" /></label>
             <ColorVariantEditor value={form} onChange={setForm} onMessage={setMessage} />

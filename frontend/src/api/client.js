@@ -193,6 +193,271 @@ async function get(path, options = {}) {
   }
 
   if (path === '/modeles-stock') {
+    let query = supabase
+      .from('modeles_stock')
+      .select(stockModelSelection)
+      .order('created_at', { ascending: false });
+    if (params.active === true) query = query.eq('is_active', true);
+
+    const { data, error } = await query;
+    if (error) throw apiError(error, 'Impossible de charger la galerie de modèles.');
+    return { data: { modeles: await Promise.all(data.map(signedStockModel)) } };
+  }
+
+  if (path === '/catalogue-link') {
+    const { data, error } = await supabase.rpc('get_or_create_catalogue_token');
+    if (error) throw apiError(error, 'Impossible de créer le lien du catalogue.');
+    return { data: { token: data } };
+  }
+
+  const publicCatalogMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)$/i);
+  if (publicCatalogMatch) {
+    const { data, error } = await supabase.rpc('get_catalogue_public', { p_token: publicCatalogMatch[1] });
+    if (error) throw apiError(error, 'Impossible de charger ce catalogue.');
+    if (!data) throw apiError(null, 'Ce lien de catalogue est invalide ou désactivé.');
+    return { data: { catalogue: { ...data, modeles: (data.modeles || []).map(publicStockModel) } } };
+  }
+
+  const publicCatalogClientMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/clients\/([0-9a-f-]+)$/i);
+  if (publicCatalogClientMatch) {
+    const { data, error } = await supabase.rpc('get_catalogue_client', {
+      p_catalogue_token: publicCatalogClientMatch[1],
+      p_client_token: publicCatalogClientMatch[2]
+    });
+    if (error) throw apiError(error, 'Impossible de reconnaître ce client.');
+    if (!data) throw apiError(null, 'Ce lien client est invalide.');
+    return { data: { client: data } };
+  }
+
+  const publicCatalogChallengeMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/challenge$/i);
+  if (publicCatalogChallengeMatch) {
+    const { data, error } = await supabase.rpc('create_catalogue_challenge', {
+      p_catalogue_token: publicCatalogChallengeMatch[1]
+    });
+    if (error) throw apiError(error, 'Impossible de préparer la vérification anti-robot.');
+    return { data: { challenge: data } };
+  }
+
+  if (path === '/demandes-catalogue') {
+    const { data, error } = await supabase
+      .from('demandes_catalogue')
+      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name, couleurs:modele_stock_couleurs(id, couleur, position)))')
+      .order('created_at', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger les demandes du catalogue.');
+    const requests = await Promise.all(data.map(async (request) => ({
+      ...request,
+      articles: await Promise.all((request.articles || [])
+        .sort((first, second) => first.position - second.position)
+        .map(async (article) => ({ ...article, modele: article.modele ? await signedStockModel(article.modele) : null })))
+    })));
+    return { data: { demandes: requests } };
+  }
+
+  const catalogRequestMatch = path.match(/^\/demandes-catalogue\/(\d+)$/);
+  if (catalogRequestMatch) {
+    const { data, error } = await supabase
+      .from('demandes_catalogue')
+      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name, couleurs:modele_stock_couleurs(id, couleur, position)))')
+      .eq('id', Number(catalogRequestMatch[1]))
+      .single();
+    if (error) throw apiError(error, 'Demande de catalogue introuvable.');
+    const request = {
+      ...data,
+      articles: await Promise.all((data.articles || [])
+        .sort((first, second) => first.position - second.position)
+        .map(async (article) => ({ ...article, modele: article.modele ? await signedStockModel(article.modele) : null })))
+    };
+    return { data: { demande: request } };
+  }
+
+  const clientHistoryMatch = path.match(/^\/clients\/(\d+)\/commandes$/);
+  if (clientHistoryMatch) {
+    const { data, error } = await supabase
+      .from('commandes')
+      .select('id, numero_commande, statut, date_creation, modele')
+      .eq('client_id', Number(clientHistoryMatch[1]))
+      .order('date_creation', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger l’historique du client.');
+    return { data: { commandes: data } };
+  }
+
+  if (path === '/commandes') {
+    let query = supabase
+      .from('commandes')
+      .select(commandeSelection)
+      .order('date_creation', { ascending: false });
+
+    if (params.numero_commande) query = query.ilike('numero_commande', `%${params.numero_commande}%`);
+    if (params.statut) query = query.eq('statut', params.statut);
+    if (params.date_debut) query = query.gte('date_creation', `${params.date_debut}T00:00:00`);
+    if (params.date_fin) query = query.lte('date_creation', `${params.date_fin}T23:59:59`);
+
+    const { data, error } = await query;
+    if (error) throw apiError(error, 'Impossible de charger les commandes.');
+    return { data: { commandes: data.map(formatCommande) } };
+  }
+
+  if (path === '/messages') {
+    const { data, error } = await supabase
+      .from('commande_messages')
+      .select('id, commande_id, auteur_id, auteur_nom, auteur_role, contenu, created_at')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw apiError(error, 'Impossible de charger la messagerie.');
+    return { data: { messages: data } };
+  }
+
+  if (path === '/comptabilite') {
+    const { data, error } = await supabase
+      .from('commande_comptabilite')
+      .select('commande_id, revendeur_id, prix_cordonnier, prix_vente, benefice, created_at, updated_at')
+      .order('updated_at', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger la comptabilité.');
+    return { data: { comptabilite: data } };
+  }
+
+  if (path === '/paiements') {
+    const { data, error } = await supabase
+      .from('commande_paiements')
+      .select('id, commande_id, revendeur_id, montant, mode_paiement, reference, note, date_paiement, created_at')
+      .order('date_paiement', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger les paiements.');
+    return { data: { paiements: data } };
+  }
+
+  if (path === '/articles-comptabilite') {
+    const [{ data: articles, error: articlesError }, { data: entries, error: entriesError }] = await Promise.all([
+      supabase
+        .from('commande_articles')
+        .select('id, commande_id, modele, pointure, couleur, quantite, position')
+        .order('commande_id')
+        .order('position'),
+      supabase
+        .from('commande_article_comptabilite')
+        .select('article_id, commande_id, prix_cordonnier_unitaire, prix_vente_unitaire, benefice_unitaire, updated_at')
+    ]);
+    if (articlesError || entriesError) throw apiError(articlesError || entriesError, 'Impossible de charger le détail comptable.');
+    const entriesByArticle = new Map(entries.map((entry) => [entry.article_id, entry]));
+    return {
+      data: {
+        articles: articles.map((article) => ({
+          ...article,
+          comptabilite: entriesByArticle.get(article.id) || null
+        }))
+      }
+    };
+  }
+
+  const historyMatch = path.match(/^\/commandes\/(\d+)\/history$/);
+  if (historyMatch) {
+    const { data, error } = await supabase
+      .from('commande_statuts')
+      .select('id, statut, commentaire, created_at, utilisateur:profiles!commande_statuts_user_id_fkey(nom)')
+      .eq('commande_id', Number(historyMatch[1]))
+      .order('created_at');
+    if (error) throw apiError(error, 'Impossible de charger l’historique.');
+    return { data: { history: data } };
+  }
+
+  const messagesMatch = path.match(/^\/commandes\/(\d+)\/messages$/);
+  if (messagesMatch) {
+    const { data, error } = await supabase
+      .from('commande_messages')
+      .select('id, commande_id, auteur_id, auteur_nom, auteur_role, contenu, created_at')
+      .eq('commande_id', Number(messagesMatch[1]))
+      .order('created_at');
+    if (error) throw apiError(error, 'Impossible de charger la conversation.');
+    return { data: { messages: data } };
+  }
+
+  const articlesMatch = path.match(/^\/commandes\/(\d+)\/articles$/);
+  if (articlesMatch) {
+    const { data, error } = await supabase
+      .from('commande_articles')
+      .select('id, commande_id, modele_stock_id, modele, pointure, couleur, matiere, semelle, quantite, position, modele_stock:modeles_stock(id, nom, reference, photo_path, file_name, couleurs:modele_stock_couleurs(id, couleur, position))')
+      .eq('commande_id', Number(articlesMatch[1]))
+      .order('position');
+    if (error) throw apiError(error, 'Impossible de charger les articles de la commande.');
+    return { data: { articles: await Promise.all(data.map(formatOrderArticle)) } };
+  }
+
+  const commandeMatch = path.match(/^\/commandes\/(\d+)$/);
+  if (commandeMatch) {
+    return { data: { commande: await getCommande(commandeMatch[1]) } };
+  }
+
+  if (path === '/photos') {
+    const { data, error } = await supabase
+      .from('photos')
+      .select('*')
+      .eq('commande_id', Number(params.commande_id))
+      .order('created_at');
+    if (error) throw apiError(error, 'Impossible de charger les photos.');
+    const photos = await Promise.all(data.map(signedPhoto));
+
+    if (!photos.some((photo) => photo.type_photo === 'modele')) {
+      const { data: order, error: orderError } = await supabase
+        .from('commandes')
+        .select('modele_stock_id')
+        .eq('id', Number(params.commande_id))
+        .single();
+      if (orderError) throw apiError(orderError, 'Impossible de retrouver le modèle de la commande.');
+
+      if (order.modele_stock_id) {
+        const { data: stockModel, error: modelError } = await supabase
+          .from('modeles_stock')
+          .select('id, nom, photo_path, file_name')
+          .eq('id', order.modele_stock_id)
+          .single();
+        if (modelError) throw apiError(modelError, 'Impossible de charger le modèle du stock.');
+        const signedModel = await signedStockModel(stockModel);
+        photos.unshift({
+          id: `stock-${signedModel.id}`,
+          commande_id: Number(params.commande_id),
+          type_photo: 'modele',
+          storage_path: signedModel.photo_url,
+          file_name: signedModel.file_name,
+          source: 'stock'
+        });
+      }
+    }
+
+    return { data: { photos } };
+  }
+
+  if (path === '/notifications') {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw apiError(error, 'Impossible de charger les notifications.');
+    return { data: { notifications: data } };
+  }
+
+  if (path === '/dashboard') {
+    const { data, error } = await supabase.from('commandes').select('statut');
+    if (error) throw apiError(error, 'Impossible de charger le tableau de bord.');
+    const summary = {
+      total: data.length,
+      en_attente: 0,
+      en_fabrication: 0,
+      prete: 0,
+      livree: 0,
+      annulee: 0
+    };
+    data.forEach((commande) => {
+      summary[commande.statut] += 1;
+    });
+    return { data: { summary } };
+  }
+
+  throw apiError(null, `Route non prise en charge : ${path}`);
+}
+
+async function post(path, body) {
+  ensureConfigured();
+
+  if (path === '/modeles-stock') {
     const file = body.get('file');
     const nom = String(body.get('nom') || '').trim();
     const description = String(body.get('description') || '').trim();

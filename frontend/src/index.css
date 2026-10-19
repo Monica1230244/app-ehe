@@ -1191,3 +1191,23 @@ small { font-size: .75rem; }
 .stock-model-photo-button { position: absolute; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
 .stock-model-photo-button:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
 .stock-model-photo .photo-thumb-zoom { top: auto; right: 8px; bottom: 8px; }
+
+.stock-auto-reference { display: grid; align-content: center; gap: 4px; min-height: 42px; padding: 9px 12px; border: 1px dashed #d6b7bd; border-radius: 11px; color: var(--muted); background: #fff8f9; }
+.stock-auto-reference span, .stock-field-label { color: var(--muted); font-size: .65rem; font-weight: 750; }
+.stock-auto-reference strong { color: var(--primary); font-size: .76rem; }
+.stock-color-editor { display: grid; gap: 8px; }
+.stock-color-add { display: flex; align-items: center; gap: 8px; }
+.stock-color-add input { flex: 1; min-width: 0; }
+.stock-color-add .secondary-button { min-height: 40px; }
+.stock-color-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; }
+.stock-color-chips:empty { display: none; }
+.stock-color-chips > span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; color: var(--primary); background: var(--primary-soft); font-size: .65rem; font-weight: 800; }
+.stock-color-chips button { display: grid; width: 18px; height: 18px; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--primary); background: transparent; font-size: .9rem; cursor: pointer; }
+.stock-color-chips button:hover { color: #fff; background: var(--primary); }
+.stock-model-colors { display: grid; gap: 6px; }
+.stock-model-colors > span { color: var(--muted); font-size: .62rem; font-weight: 750; }
+.stock-model-colors > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.stock-model-colors b { padding: 4px 7px; border-radius: 999px; color: var(--primary); background: var(--primary-soft); font-size: .6rem; }
+:root[data-theme="dark"] .stock-auto-reference,
+:root[data-theme="dark"] .stock-color-add input,
+:root[data-theme="dark"] .stock-color-add select { border-color: var(--line); background: var(--surface); }

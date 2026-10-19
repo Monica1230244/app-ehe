@@ -1273,3 +1273,12 @@ small { font-size: .75rem; }
   .photo-gallery-nav { width: 32px; height: 46px; font-size: 1.6rem; }
   .photo-gallery-thumbnails { max-width: 88vw; }
 }
+
+
+.stock-model-gallery-hint {
+  display: block;
+  margin-top: -4px;
+  color: var(--primary);
+  font-size: .66rem;
+  font-weight: 750;
+}

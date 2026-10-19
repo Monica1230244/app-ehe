@@ -81,12 +81,16 @@ export default function CatalogRequests() {
               </header>
 
               <div className="catalog-request-items">
-                {request.articles.map((article) => (
-                  <article key={article.id}>
-                    {article.modele?.photo_url && <img src={article.modele.photo_url} alt={article.modele.nom} />}
-                    <div><strong>{article.modele?.nom || 'Modèle indisponible'}</strong><small>{article.modele?.reference || 'Sans référence'}</small><span>{article.quantite} paire{article.quantite > 1 ? 's' : ''}{article.pointure ? ` · Pointure ${article.pointure}` : ''}{article.couleur ? ` · ${article.couleur}` : ''}</span></div>
-                  </article>
-                ))}
+                {request.articles.map((article) => {
+                  const colorVariant = article.modele?.couleurs?.find((variant) => String(variant.id) === String(article.modele_stock_couleur_id));
+                  const photoUrl = colorVariant?.photo_url || article.modele?.photo_url;
+                  return (
+                    <article key={article.id}>
+                      {photoUrl && <img src={photoUrl} alt={article.modele?.nom || 'Modèle'} />}
+                      <div><strong>{article.modele?.nom || 'Modèle indisponible'}</strong><small>{article.modele?.reference || 'Sans référence'}{article.couleur ? ` · ${article.couleur}` : ''}</small><span>{article.quantite} paire{article.quantite > 1 ? 's' : ''}{article.pointure ? ` · Pointure ${article.pointure}` : ''}</span></div>
+                    </article>
+                  );
+                })}
               </div>
 
               {request.note && <p className="catalog-request-note"><strong>Message du client :</strong> {request.note}</p>}

@@ -127,6 +127,18 @@ function ColorVariantEditor({ value, onChange, onMessage }) {
   );
 }
 
+function buildModelGallery(modele) {
+  return [
+    { key: 'main', src: modele.photo_url, label: 'Photo principale', variantKey: null },
+    ...(modele.couleurs || []).map((variant) => ({
+      key: variant.id || variant.couleur,
+      src: variant.photo_url || modele.photo_url,
+      label: variant.couleur,
+      variantKey: variant.id || variant.couleur
+    }))
+  ].filter((photo) => photo.src);
+}
+
 export default function Stock() {
   const [modeles, setModeles] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -194,6 +206,25 @@ export default function Stock() {
 
   const activeCount = modeles.filter((modele) => modele.is_active).length;
   const catalogueLink = catalogueToken ? `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}` : '';
+
+  const activeGalleryPhoto = activePhoto?.photos?.[activePhoto.index] || null;
+
+  function openModelGallery(modele, variantKey = null) {
+    const photos = buildModelGallery(modele);
+    const selectedIndex = variantKey === null
+      ? 0
+      : Math.max(0, photos.findIndex((photo) => photo.variantKey === variantKey));
+    setActivePhoto({ nom: modele.nom, photos, index: selectedIndex });
+  }
+
+  function changeActivePhoto(offset) {
+    setActivePhoto((current) => {
+      if (!current?.photos?.length) return current;
+      const nextIndex = (current.index + offset + current.photos.length) % current.photos.length;
+      return { ...current, index: nextIndex };
+    });
+  }
+
 
   async function copyCatalogueLink() {
     try {
@@ -373,7 +404,7 @@ export default function Stock() {
             {filteredModels.map((modele) => (
               <article key={modele.id} className={`stock-model-card${modele.is_active ? '' : ' archived'}`}>
                 <div className="stock-model-photo">
-                  <button type="button" className="stock-model-photo-button" onClick={() => setActivePhoto({ storage_path: modele.photo_url, nom: modele.nom })} aria-label={`Agrandir la photo de ${modele.nom}`}>
+                  <button type="button" className="stock-model-photo-button" onClick={() => openModelGallery(modele)} aria-label={`Agrandir la photo de ${modele.nom}`}>
                     <img src={modele.photo_url} alt={modele.nom} />
                     <span className="photo-thumb-zoom">Agrandir</span>
                   </button>
@@ -404,7 +435,7 @@ export default function Stock() {
                           <span>Variantes disponibles</span>
                           <div>
                             {modele.couleurs.map((variant) => (
-                              <button type="button" key={variant.id || variant.couleur} onClick={() => setActivePhoto({ storage_path: variant.photo_url || modele.photo_url, nom: modele.nom + ' — ' + variant.couleur })}>
+                              <button type="button" key={variant.id || variant.couleur} onClick={() => openModelGallery(modele, variant.id || variant.couleur)}>
                                 <VariantPhotoPreview variant={variant} alt={variant.couleur} />
                                 <b>{variant.couleur}</b>
                                 <small>{variant.quantite} paire{Number(variant.quantite) > 1 ? 's' : ''}</small>
@@ -427,12 +458,26 @@ export default function Stock() {
         )}
       </section>
       {message && <p className="stock-feedback" role="status">{message}</p>}
-      {activePhoto && (
-        <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`Photo de ${activePhoto.nom}`} onClick={() => setActivePhoto(null)}>
-          <div className="photo-lightbox-content" onClick={(event) => event.stopPropagation()}>
+      {activePhoto && activeGalleryPhoto && (
+        <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`Galerie de ${activePhoto.nom}`} onClick={() => setActivePhoto(null)}>
+          <div className="photo-lightbox-content photo-gallery-lightbox" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="photo-lightbox-close" onClick={() => setActivePhoto(null)} aria-label="Fermer">×</button>
-            <img src={activePhoto.storage_path} alt={activePhoto.nom} />
-            <p>{activePhoto.nom}</p>
+            <div className="photo-gallery-main">
+              {activePhoto.photos.length > 1 && <button type="button" className="photo-gallery-nav" onClick={() => changeActivePhoto(-1)} aria-label="Photo précédente">‹</button>}
+              <img src={activeGalleryPhoto.src} alt={`${activePhoto.nom} — ${activeGalleryPhoto.label}`} />
+              {activePhoto.photos.length > 1 && <button type="button" className="photo-gallery-nav" onClick={() => changeActivePhoto(1)} aria-label="Photo suivante">›</button>}
+            </div>
+            <p>{activePhoto.nom} — {activeGalleryPhoto.label}</p>
+            {activePhoto.photos.length > 1 && (
+              <div className="photo-gallery-thumbnails" aria-label="Toutes les couleurs du modèle">
+                {activePhoto.photos.map((photo, index) => (
+                  <button type="button" className={index === activePhoto.index ? 'active' : ''} key={photo.key} onClick={() => setActivePhoto((current) => ({ ...current, index }))} aria-label={photo.label}>
+                    <img src={photo.src} alt="" />
+                    <span>{photo.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -117,6 +117,7 @@ export default function Stock() {
       setModeles((current) => [response.data.modele, ...current]);
       setForm(emptyForm);
       setPhoto(null);
+      setNewColor('');
       if (fileInput.current) fileInput.current.value = '';
       setMessage('Modèle ajouté à la galerie.');
     } catch (requestError) {
@@ -154,13 +155,16 @@ export default function Stock() {
     setEditingModelId(null);
     setEditPhoto(null);
     setEditPreview('');
+    setEditColorDraft('');
     if (editFileInput.current) editFileInput.current.value = '';
   }
 
   function addColor(setter, draft, reset) {
     const color = draft.trim();
     if (!color) return;
-    setter((current) => current.couleurs.includes(color) ? current : { ...current, couleurs: [...current.couleurs, color] });
+    setter((current) => current.couleurs.some((item) => item.toLocaleLowerCase('fr') === color.toLocaleLowerCase('fr'))
+      ? current
+      : { ...current, couleurs: [...current.couleurs, color] });
     reset('');
   }
 

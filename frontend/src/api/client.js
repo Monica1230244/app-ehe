@@ -46,6 +46,11 @@ const commandeSelection = `
   cordonnier:profiles!commandes_cordonnier_id_fkey(nom)
 `;
 
+const stockModelSelection = `
+  id, revendeur_id, nom, reference, description, photo_path, file_name, is_active, created_at, updated_at,
+  couleurs:modele_stock_couleurs(id, couleur, position)
+`;
+
 async function getCommande(commandeId) {
   const { data, error } = await supabase
     .from('commandes')
@@ -68,13 +73,40 @@ async function signedPhoto(photo) {
   return { ...photo, storage_key: photo.storage_path, storage_path: data.signedUrl };
 }
 
+function parseColors(value) {
+  let candidate = value;
+  if (typeof candidate === 'string') {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch {
+      candidate = [];
+    }
+  }
+
+  if (!Array.isArray(candidate)) return [];
+  return [...new Set(candidate
+    .map((color) => typeof color === 'string' ? color.trim() : color?.couleur?.trim())
+    .filter(Boolean))]
+    .slice(0, 30);
+}
+
+function normalizeModelColors(model) {
+  return (model.couleurs || [])
+    .map((color) => ({
+      ...color,
+      couleur: String(color.couleur || '').trim()
+    }))
+    .filter((color) => color.couleur)
+    .sort((first, second) => (first.position || 0) - (second.position || 0) || first.couleur.localeCompare(second.couleur, 'fr'));
+}
+
 async function signedStockModel(model) {
   const { data, error } = await supabase.storage
     .from('modele-photos')
     .createSignedUrl(model.photo_path, 3600);
 
   if (error) throw apiError(error, 'Impossible d’ouvrir la photo du modèle.');
-  return { ...model, photo_url: data.signedUrl };
+  return { ...model, couleurs: normalizeModelColors(model), photo_url: data.signedUrl };
 }
 
 function publicStockModel(model) {
@@ -130,7 +162,7 @@ async function get(path, options = {}) {
   if (path === '/modeles-stock') {
     let query = supabase
       .from('modeles_stock')
-      .select('id, revendeur_id, nom, reference, description, photo_path, file_name, is_active, created_at, updated_at')
+      .select(stockModelSelection)
       .order('created_at', { ascending: false });
     if (params.active === true) query = query.eq('is_active', true);
 
@@ -176,7 +208,7 @@ async function get(path, options = {}) {
   if (path === '/demandes-catalogue') {
     const { data, error } = await supabase
       .from('demandes_catalogue')
-      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name, couleurs:modele_stock_couleurs(id, couleur, position)))')
       .order('created_at', { ascending: false });
     if (error) throw apiError(error, 'Impossible de charger les demandes du catalogue.');
     const requests = await Promise.all(data.map(async (request) => ({
@@ -192,7 +224,7 @@ async function get(path, options = {}) {
   if (catalogRequestMatch) {
     const { data, error } = await supabase
       .from('demandes_catalogue')
-      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name))')
+      .select('id, revendeur_id, client_id, civilite, nom_client, telephone, note, statut, commande_id, created_at, updated_at, articles:demande_catalogue_articles(id, modele_stock_id, quantite, pointure, couleur, position, modele:modeles_stock(id, nom, reference, description, photo_path, file_name, couleurs:modele_stock_couleurs(id, couleur, position)))')
       .eq('id', Number(catalogRequestMatch[1]))
       .single();
     if (error) throw apiError(error, 'Demande de catalogue introuvable.');
@@ -309,7 +341,7 @@ async function get(path, options = {}) {
   if (articlesMatch) {
     const { data, error } = await supabase
       .from('commande_articles')
-      .select('id, commande_id, modele_stock_id, modele, pointure, couleur, matiere, semelle, quantite, position, modele_stock:modeles_stock(id, nom, reference, photo_path, file_name)')
+      .select('id, commande_id, modele_stock_id, modele, pointure, couleur, matiere, semelle, quantite, position, modele_stock:modeles_stock(id, nom, reference, photo_path, file_name, couleurs:modele_stock_couleurs(id, couleur, position))')
       .eq('commande_id', Number(articlesMatch[1]))
       .order('position');
     if (error) throw apiError(error, 'Impossible de charger les articles de la commande.');
@@ -442,8 +474,8 @@ async function post(path, body) {
   if (path === '/modeles-stock') {
     const file = body.get('file');
     const nom = String(body.get('nom') || '').trim();
-    const reference = String(body.get('reference') || '').trim();
     const description = String(body.get('description') || '').trim();
+    const couleurs = parseColors(body.get('couleurs'));
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw apiError(authError, 'Session expirée.');
     if (!file || !nom) throw apiError(null, 'Le nom et la photo du modèle sont obligatoires.');
@@ -459,16 +491,30 @@ async function post(path, body) {
 
     const { data, error } = await supabase.from('modeles_stock').insert({
       nom,
-      reference: reference || null,
+      reference: null,
       description: description || null,
       photo_path: storagePath,
       file_name: file.name
-    }).select().single();
+    }).select('id').single();
     if (error) {
       await supabase.storage.from('modele-photos').remove([storagePath]);
       throw apiError(error, 'Impossible d’enregistrer ce modèle.');
     }
-    return { data: { modele: await signedStockModel(data) } };
+
+    if (couleurs.length > 0) {
+      const { error: colorsError } = await supabase.from('modele_stock_couleurs').insert(
+        couleurs.map((couleur, index) => ({ modele_stock_id: data.id, couleur, position: index + 1 }))
+      );
+      if (colorsError) throw apiError(colorsError, 'Le modèle a été créé, mais ses couleurs n’ont pas pu être enregistrées.');
+    }
+
+    const { data: fullModel, error: fullModelError } = await supabase
+      .from('modeles_stock')
+      .select(stockModelSelection)
+      .eq('id', data.id)
+      .single();
+    if (fullModelError) throw apiError(fullModelError, 'Le modèle a été créé, mais il ne peut pas être rechargé.');
+    return { data: { modele: await signedStockModel(fullModel) } };
   }
 
   const publicCatalogRequestMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/demandes$/i);
@@ -643,15 +689,16 @@ async function patch(path, body = {}) {
     const modelId = Number(stockModelDetailsMatch[1]);
     const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;
     const nom = String(isMultipart ? body.get('nom') : body.nom || '').trim();
-    const reference = String(isMultipart ? body.get('reference') : body.reference || '').trim();
     const description = String(isMultipart ? body.get('description') : body.description || '').trim();
+    const rawColors = isMultipart ? body.get('couleurs') : body.couleurs;
+    const hasColors = isMultipart ? body.has('couleurs') : Object.prototype.hasOwnProperty.call(body, 'couleurs');
+    const couleurs = parseColors(rawColors);
     const file = isMultipart ? body.get('file') : null;
 
     if (!nom) throw apiError(null, 'Le nom du modèle est obligatoire.');
 
     const changes = {
       nom,
-      reference: reference || null,
       description: description || null
     };
     let previousPhotoPath = null;
@@ -699,7 +746,29 @@ async function patch(path, body = {}) {
       await supabase.storage.from('modele-photos').remove([previousPhotoPath]);
     }
 
-    return { data: { modele: await signedStockModel(data) } };
+    if (hasColors) {
+      const { error: deleteColorsError } = await supabase
+        .from('modele_stock_couleurs')
+        .delete()
+        .eq('modele_stock_id', modelId);
+      if (deleteColorsError) throw apiError(deleteColorsError, 'Impossible de mettre à jour les couleurs.');
+
+      if (couleurs.length > 0) {
+        const { error: colorsError } = await supabase.from('modele_stock_couleurs').insert(
+          couleurs.map((couleur, index) => ({ modele_stock_id: modelId, couleur, position: index + 1 }))
+        );
+        if (colorsError) throw apiError(colorsError, 'Impossible d’enregistrer les couleurs.');
+      }
+    }
+
+    const { data: fullModel, error: fullModelError } = await supabase
+      .from('modeles_stock')
+      .select(stockModelSelection)
+      .eq('id', modelId)
+      .single();
+    if (fullModelError) throw apiError(fullModelError, 'Le modèle a été modifié, mais il ne peut pas être rechargé.');
+
+    return { data: { modele: await signedStockModel(fullModel) } };
   }
 
   const catalogRequestMatch = path.match(/^\/demandes-catalogue\/(\d+)$/);

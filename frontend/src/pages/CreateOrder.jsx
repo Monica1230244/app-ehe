@@ -106,10 +106,12 @@ export default function CreateOrder() {
 
   function selectStockModel(articleKey, modelId) {
     const selectedModel = stockModels.find((model) => String(model.id) === modelId);
+    const availableColors = selectedModel?.couleurs || [];
     setArticles((current) => current.map((article) => article.key === articleKey ? {
       ...article,
       modele_stock_id: modelId,
-      modele: selectedModel?.nom || ''
+      modele: selectedModel?.nom || '',
+      couleur: availableColors.length === 1 ? availableColors[0].couleur : ''
     } : article));
   }
 
@@ -215,7 +217,17 @@ export default function CreateOrder() {
                     </label>
                     <label>Nom du modèle<input value={article.modele} onChange={(event) => updateArticle(article.key, 'modele', event.target.value)} readOnly={Boolean(article.modele_stock_id)} required /></label>
                     <label>Pointure<input value={article.pointure} onChange={(event) => updateArticle(article.key, 'pointure', event.target.value)} required /></label>
-                    <label>Couleur<input value={article.couleur} onChange={(event) => updateArticle(article.key, 'couleur', event.target.value)} required /></label>
+                    <label>Couleur
+                      {selectedModel?.couleurs?.length > 0 ? (
+                        <select value={article.couleur} onChange={(event) => updateArticle(article.key, 'couleur', event.target.value)} required>
+                          <option value="">Choisir une couleur</option>
+                          {selectedModel.couleurs.map((color) => <option key={color.id || color.couleur} value={color.couleur}>{color.couleur}</option>)}
+                          <option value="Autre">Autre couleur</option>
+                        </select>
+                      ) : (
+                        <input value={article.couleur} onChange={(event) => updateArticle(article.key, 'couleur', event.target.value)} placeholder="Ex. Noir" required />
+                      )}
+                    </label>
                     <label>Matière<input value={article.matiere} onChange={(event) => updateArticle(article.key, 'matiere', event.target.value)} required /></label>
                     <label>Semelle<input value={article.semelle} onChange={(event) => updateArticle(article.key, 'semelle', event.target.value)} required /></label>
                     <label>Nombre de paires<input type="number" min="1" value={article.quantite} onChange={(event) => updateArticle(article.key, 'quantite', event.target.value)} required /></label>

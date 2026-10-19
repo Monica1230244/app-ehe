@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 
-const emptyForm = { nom: '', reference: '', description: '' };
+const emptyForm = { nom: '', description: '', couleurs: [] };
 
 export default function Stock() {
   const [modeles, setModeles] = useState([]);
@@ -21,6 +21,8 @@ export default function Stock() {
   const [catalogueToken, setCatalogueToken] = useState('');
   const [sharing, setSharing] = useState(false);
   const [activePhoto, setActivePhoto] = useState(null);
+  const [newColor, setNewColor] = useState('');
+  const [editColorDraft, setEditColorDraft] = useState('');
   const fileInput = useRef(null);
   const editFileInput = useRef(null);
 
@@ -106,8 +108,8 @@ export default function Stock() {
     setMessage('');
     const payload = new FormData();
     payload.append('nom', form.nom);
-    payload.append('reference', form.reference);
     payload.append('description', form.description);
+    payload.append('couleurs', JSON.stringify(form.couleurs));
     payload.append('file', photo);
 
     try {
@@ -139,9 +141,10 @@ export default function Stock() {
     setEditingModelId(modele.id);
     setEditForm({
       nom: modele.nom,
-      reference: modele.reference || '',
-      description: modele.description || ''
+      description: modele.description || '',
+      couleurs: (modele.couleurs || []).map((color) => color.couleur)
     });
+    setEditColorDraft('');
     setEditPhoto(null);
     if (editFileInput.current) editFileInput.current.value = '';
     setMessage('');
@@ -154,6 +157,13 @@ export default function Stock() {
     if (editFileInput.current) editFileInput.current.value = '';
   }
 
+  function addColor(setter, draft, reset) {
+    const color = draft.trim();
+    if (!color) return;
+    setter((current) => current.couleurs.includes(color) ? current : { ...current, couleurs: [...current.couleurs, color] });
+    reset('');
+  }
+
   async function saveModel(event) {
     event.preventDefault();
     setSaving(true);
@@ -163,8 +173,8 @@ export default function Stock() {
       if (editPhoto) {
         payload = new FormData();
         payload.append('nom', editForm.nom);
-        payload.append('reference', editForm.reference);
         payload.append('description', editForm.description);
+        payload.append('couleurs', JSON.stringify(editForm.couleurs));
         payload.append('file', editPhoto);
       }
       const response = await api.patch(`/modeles-stock/${editingModelId}`, payload);
@@ -213,9 +223,14 @@ export default function Stock() {
           <div className="stock-form-fields">
             <div className="stock-form-grid">
               <label>Nom du modèle<input value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} placeholder="Ex. Mocassin Élégance" maxLength="120" required /></label>
-              <label>Référence <small>Facultative</small><input value={form.reference} onChange={(event) => setForm({ ...form, reference: event.target.value })} placeholder="Ex. EHE-001" maxLength="60" /></label>
+              <div className="stock-auto-reference"><span>Numéro automatique</span><strong>Attribué après l’enregistrement</strong></div>
             </div>
             <label>Description <small>Facultative</small><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Style, particularités ou recommandations…" maxLength="1000" /></label>
+            <div className="stock-color-editor">
+              <span className="stock-field-label">Couleurs disponibles <small>Facultatives</small></span>
+              <div className="stock-color-add"><input value={newColor} onChange={(event) => setNewColor(event.target.value)} placeholder="Ex. Noir, marron…" maxLength="80" /><button type="button" className="secondary-button" onClick={() => addColor(setForm, newColor, setNewColor)}>Ajouter</button></div>
+              <div className="stock-color-chips">{form.couleurs.map((color) => <span key={color}>{color}<button type="button" onClick={() => setForm({ ...form, couleurs: form.couleurs.filter((item) => item !== color) })} aria-label={`Retirer la couleur ${color}`}>×</button></span>)}</div>
+            </div>
             <button type="submit" className="primary-button" disabled={saving}>{saving ? 'Enregistrement…' : 'Ajouter à la galerie'} <span>→</span></button>
           </div>
         </form>
@@ -257,8 +272,12 @@ export default function Stock() {
                         <span><strong>Modifier la photo</strong><small>JPG, PNG ou WebP · 5 Mo maximum</small></span>
                       </label>
                       <input aria-label="Nom du modèle" value={editForm.nom} onChange={(event) => setEditForm({ ...editForm, nom: event.target.value })} maxLength="120" required />
-                      <input aria-label="Référence du modèle" value={editForm.reference} onChange={(event) => setEditForm({ ...editForm, reference: event.target.value })} maxLength="60" placeholder="Référence facultative" />
                       <textarea aria-label="Description du modèle" value={editForm.description} onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} maxLength="1000" placeholder="Description facultative" />
+                      <div className="stock-color-editor">
+                        <span className="stock-field-label">Couleurs disponibles</span>
+                        <div className="stock-color-add"><input value={editColorDraft} onChange={(event) => setEditColorDraft(event.target.value)} placeholder="Ajouter une couleur…" maxLength="80" /><button type="button" className="secondary-button" onClick={() => addColor(setEditForm, editColorDraft, setEditColorDraft)}>Ajouter</button></div>
+                        <div className="stock-color-chips">{editForm.couleurs.map((color) => <span key={color}>{color}<button type="button" onClick={() => setEditForm({ ...editForm, couleurs: editForm.couleurs.filter((item) => item !== color) })} aria-label={`Retirer la couleur ${color}`}>×</button></span>)}</div>
+                      </div>
                       <div className="record-actions">
                         <button type="submit" className="primary-button compact" disabled={saving}>Enregistrer</button>
                         <button type="button" className="secondary-button" onClick={cancelEditing}>Annuler</button>
@@ -268,6 +287,7 @@ export default function Stock() {
                     <>
                       <div><h3>{modele.nom}</h3>{modele.reference && <small>{modele.reference}</small>}</div>
                       <p>{modele.description || 'Aucune description ajoutée.'}</p>
+                      {modele.couleurs?.length > 0 && <div className="stock-model-colors"><span>Couleurs</span><div>{modele.couleurs.map((color) => <b key={color.id || color.couleur}>{color.couleur}</b>)}</div></div>}
                       <div className="stock-model-actions">
                         {modele.is_active && <Link className="stock-use-button" to={`/create-order?modele=${modele.id}`}>Utiliser pour une commande</Link>}
                         <button type="button" onClick={() => startEditing(modele)}>Corriger</button>

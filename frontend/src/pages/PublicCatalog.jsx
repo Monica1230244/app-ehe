@@ -118,7 +118,7 @@ export default function PublicCatalog() {
   function addToCart(model) {
     setCart((current) => current.some((item) => item.modele.id === model.id)
       ? current
-      : [...current, { modele: model, quantite: 1, pointure: '', couleur: '' }]);
+      : [...current, { modele: model, quantite: 1, pointure: '', couleur: model.couleurs?.length === 1 ? model.couleurs[0].couleur : '' }]);
   }
 
   function updateCart(modelId, field, value) {
@@ -250,7 +250,17 @@ export default function PublicCatalog() {
                         <div><strong>{item.modele.nom}</strong><button type="button" onClick={() => setCart((current) => current.filter((line) => line.modele.id !== item.modele.id))}>Retirer</button></div>
                         <div className="public-cart-fields">
                           <label>Pointure <small>Facultatif</small><input value={item.pointure} onChange={(event) => updateCart(item.modele.id, 'pointure', event.target.value)} placeholder="Ex. 42" maxLength="40" /></label>
-                          <label>Couleur <small>Facultatif</small><input value={item.couleur} onChange={(event) => updateCart(item.modele.id, 'couleur', event.target.value)} placeholder="Ex. Noir" maxLength="80" /></label>
+                          <label>Couleur <small>Facultatif</small>
+                            {item.modele.couleurs?.length > 0 ? (
+                              <select value={item.couleur} onChange={(event) => updateCart(item.modele.id, 'couleur', event.target.value)}>
+                                <option value="">Choisir</option>
+                                {item.modele.couleurs.map((color) => <option key={color.id || color.couleur} value={color.couleur}>{color.couleur}</option>)}
+                                <option value="Autre">Autre couleur</option>
+                              </select>
+                            ) : (
+                              <input value={item.couleur} onChange={(event) => updateCart(item.modele.id, 'couleur', event.target.value)} placeholder="Ex. Noir" maxLength="80" />
+                            )}
+                          </label>
                           <label>Quantité<input type="number" min="1" max="20" value={item.quantite} onChange={(event) => updateCart(item.modele.id, 'quantite', event.target.value)} required /></label>
                         </div>
                       </div>

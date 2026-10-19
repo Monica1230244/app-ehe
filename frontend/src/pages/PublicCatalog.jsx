@@ -13,12 +13,7 @@ function readRememberedCustomer(catalogToken) {
   try {
     const remembered = JSON.parse(localStorage.getItem(rememberedCustomerKey(catalogToken)));
     if (remembered?.civilite && remembered?.nom_client && remembered?.telephone) {
-      return {
-        ...emptyCustomer,
-        civilite: remembered.civilite,
-        nom_client: remembered.nom_client,
-        telephone: remembered.telephone
-      };
+      return { ...emptyCustomer, ...remembered };
     }
   } catch {
     return null;
@@ -32,6 +27,10 @@ function forgetRememberedCustomer(catalogToken) {
   } catch {
     return;
   }
+}
+
+function cartLineKey(model, variant) {
+  return `${model.id}:${variant?.id || variant?.couleur || 'custom'}`;
 }
 
 export default function PublicCatalog() {
@@ -106,23 +105,33 @@ export default function PublicCatalog() {
   const filteredModels = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('fr');
     if (!normalizedSearch) return catalog?.modeles || [];
-    return (catalog?.modeles || []).filter((model) => [model.nom, model.reference, model.description]
-      .filter(Boolean)
-      .join(' ')
-      .toLocaleLowerCase('fr')
-      .includes(normalizedSearch));
+    return (catalog?.modeles || []).filter((model) => [
+      model.nom,
+      model.reference,
+      model.description,
+      ...(model.couleurs || []).map((variant) => variant.couleur)
+    ].filter(Boolean).join(' ').toLocaleLowerCase('fr').includes(normalizedSearch));
   }, [catalog?.modeles, search]);
 
   const totalPairs = cart.reduce((total, item) => total + Number(item.quantite || 0), 0);
 
-  function addToCart(model) {
-    setCart((current) => current.some((item) => item.modele.id === model.id)
+  function addToCart(model, variant = null) {
+    const key = cartLineKey(model, variant);
+    setCart((current) => current.some((item) => item.key === key)
       ? current
-      : [...current, { modele: model, quantite: 1, pointure: '', couleur: model.couleurs?.length === 1 ? model.couleurs[0].couleur : '' }]);
+      : [...current, {
+        key,
+        modele: model,
+        variant,
+        modele_stock_couleur_id: variant?.id || null,
+        quantite: 1,
+        pointure: '',
+        couleur: variant?.couleur || ''
+      }]);
   }
 
-  function updateCart(modelId, field, value) {
-    setCart((current) => current.map((item) => item.modele.id === modelId ? { ...item, [field]: value } : item));
+  function updateCart(lineKey, field, value) {
+    setCart((current) => current.map((item) => item.key === lineKey ? { ...item, [field]: value } : item));
   }
 
   async function submitSelection(event) {
@@ -147,6 +156,7 @@ export default function PublicCatalog() {
         website,
         articles: cart.map((item) => ({
           modele_stock_id: item.modele.id,
+          modele_stock_couleur_id: item.modele_stock_couleur_id,
           quantite: Number(item.quantite),
           pointure: item.pointure,
           couleur: item.couleur
@@ -195,7 +205,7 @@ export default function PublicCatalog() {
           <div>
             <span className="eyebrow">Choisissez votre style</span>
             <h1>Votre prochaine paire commence ici.</h1>
-            <p>Parcourez les modèles EHE, ajoutez vos préférences au panier puis envoyez votre sélection. EHE vous contactera pour confirmer les détails.</p>
+            <p>Parcourez les modèles EHE, choisissez une ou plusieurs couleurs, puis envoyez votre sélection. EHE vous contactera pour confirmer les détails.</p>
           </div>
           <div className="public-catalog-steps">
             <span><b>1</b> Choisissez</span>
@@ -228,7 +238,25 @@ export default function PublicCatalog() {
                     <div className="public-product-body">
                       <div><h3>{model.nom}</h3>{model.reference && <small>{model.reference}</small>}</div>
                       <p>{model.description || 'Un modèle EHE à personnaliser selon vos envies.'}</p>
-                      <button type="button" onClick={() => addToCart(model)} disabled={selected}>{selected ? 'Ajouté au panier' : 'Ajouter au panier'}</button>
+                      {model.couleurs?.length > 0 ? (
+                        <div className="public-product-variants">
+                          <span>Choisissez une couleur</span>
+                          {model.couleurs.map((variant) => {
+                            const lineKey = cartLineKey(model, variant);
+                            const inCart = cart.some((item) => item.key === lineKey);
+                            const unavailable = Number(variant.quantite) <= 0;
+                            return (
+                              <button type="button" key={variant.id || variant.couleur} onClick={() => addToCart(model, variant)} disabled={inCart || unavailable}>
+                                <img src={variant.photo_url || model.photo_url} alt="" />
+                                <span><strong>{variant.couleur}</strong><small>{unavailable ? 'Indisponible' : `${variant.quantite} paire${Number(variant.quantite) > 1 ? 's' : ''} disponible${Number(variant.quantite) > 1 ? 's' : ''}`}</small></span>
+                                <b>{inCart ? 'Ajoutée' : unavailable ? 'Épuisée' : 'Ajouter'}</b>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => addToCart(model)} disabled={selected}>{selected ? 'Ajouté au panier' : 'Ajouter au panier'}</button>
+                      )}
                     </div>
                   </article>
                 );
@@ -239,29 +267,19 @@ export default function PublicCatalog() {
           <aside className="public-cart-card">
             <div className="public-cart-heading"><div><span>Votre sélection</span><h2>Panier</h2></div><strong>{totalPairs}</strong></div>
             {cart.length === 0 ? (
-              <div className="public-cart-empty"><span>◇</span><p>Choisissez un ou plusieurs modèles pour commencer.</p></div>
+              <div className="public-cart-empty"><span>◇</span><p>Choisissez une ou plusieurs couleurs pour commencer.</p></div>
             ) : (
               <form onSubmit={submitSelection}>
                 <div className="public-cart-lines">
                   {cart.map((item) => (
-                    <article className="public-cart-line" key={item.modele.id}>
-                      <img src={item.modele.photo_url} alt="" />
+                    <article className="public-cart-line" key={item.key}>
+                      <img src={item.variant?.photo_url || item.modele.photo_url} alt="" />
                       <div className="public-cart-line-copy">
-                        <div><strong>{item.modele.nom}</strong><button type="button" onClick={() => setCart((current) => current.filter((line) => line.modele.id !== item.modele.id))}>Retirer</button></div>
+                        <div><strong>{item.modele.nom}</strong><button type="button" onClick={() => setCart((current) => current.filter((line) => line.key !== item.key))}>Retirer</button></div>
+                        {item.couleur && <span className="public-cart-variant-label">{item.couleur}</span>}
                         <div className="public-cart-fields">
-                          <label>Pointure <small>Facultatif</small><input value={item.pointure} onChange={(event) => updateCart(item.modele.id, 'pointure', event.target.value)} placeholder="Ex. 42" maxLength="40" /></label>
-                          <label>Couleur <small>Facultatif</small>
-                            {item.modele.couleurs?.length > 0 ? (
-                              <select value={item.couleur} onChange={(event) => updateCart(item.modele.id, 'couleur', event.target.value)}>
-                                <option value="">Choisir</option>
-                                {item.modele.couleurs.map((color) => <option key={color.id || color.couleur} value={color.couleur}>{color.couleur}</option>)}
-                                <option value="Autre">Autre couleur</option>
-                              </select>
-                            ) : (
-                              <input value={item.couleur} onChange={(event) => updateCart(item.modele.id, 'couleur', event.target.value)} placeholder="Ex. Noir" maxLength="80" />
-                            )}
-                          </label>
-                          <label>Quantité<input type="number" min="1" max="20" value={item.quantite} onChange={(event) => updateCart(item.modele.id, 'quantite', event.target.value)} required /></label>
+                          <label>Pointure <small>Facultatif</small><input value={item.pointure} onChange={(event) => updateCart(item.key, 'pointure', event.target.value)} placeholder="Ex. 42" maxLength="40" /></label>
+                          <label>Quantité<input type="number" min="1" max={item.variant?.quantite || 20} value={item.quantite} onChange={(event) => updateCart(item.key, 'quantite', event.target.value)} required /></label>
                         </div>
                       </div>
                     </article>
@@ -274,15 +292,12 @@ export default function PublicCatalog() {
                   {customerRecognized && (
                     <div className="public-customer-recognized">
                       <span>✓ Coordonnées reconnues</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          forgetRememberedCustomer(token);
-                          setCustomer(emptyCustomer);
-                          setCustomerRecognized(false);
-                          setActiveClientToken('');
-                        }}
-                      >Ce n’est pas moi</button>
+                      <button type="button" onClick={() => {
+                        forgetRememberedCustomer(token);
+                        setCustomer(emptyCustomer);
+                        setCustomerRecognized(false);
+                        setActiveClientToken('');
+                      }}>Ce n’est pas moi</button>
                     </div>
                   )}
                   <label>Civilité

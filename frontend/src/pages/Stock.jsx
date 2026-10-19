@@ -412,9 +412,9 @@ export default function Stock() {
             {filteredModels.map((modele) => (
               <article key={modele.id} className={`stock-model-card${modele.is_active ? '' : ' archived'}`}>
                 <div className="stock-model-photo">
-                  <button type="button" className="stock-model-photo-button" onClick={() => openModelGallery(modele)} aria-label={`Voir la photo principale et les ${modele.couleurs?.length || 0} couleurs de ${modele.nom}`} title={modele.couleurs?.length ? 'Cliquer pour voir toutes les couleurs' : 'Cliquer pour agrandir'}>
+                  <button type="button" className="stock-model-photo-button" onClick={() => openModelGallery(modele)} aria-label={`Agrandir la photo de ${modele.nom}`}>
                     <img src={modele.photo_url} alt={modele.nom} />
-                    <span className="photo-thumb-zoom">{modele.couleurs?.length ? `Voir les ${modele.couleurs.length} couleurs` : 'Agrandir'}</span>
+                    <span className="photo-thumb-zoom">Agrandir</span>
                   </button>
                   <span>{modele.is_active ? 'Disponible' : 'Archivé'}</span>
                 </div>

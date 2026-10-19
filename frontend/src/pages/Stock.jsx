@@ -4,6 +4,129 @@ import api from '../api/client';
 
 const emptyForm = { nom: '', description: '', couleurs: [] };
 
+function newVariant(values = {}) {
+  return {
+    key: crypto.randomUUID(),
+    id: null,
+    couleur: '',
+    quantite: '1',
+    photo: null,
+    photo_url: '',
+    file_name: '',
+    ...values
+  };
+}
+
+function VariantPhotoPreview({ variant, alt }) {
+  const [preview, setPreview] = useState(variant.photo_url || '');
+
+  useEffect(() => {
+    if (!variant.photo) {
+      setPreview(variant.photo_url || '');
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(variant.photo);
+    setPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [variant.photo, variant.photo_url]);
+
+  return preview
+    ? <img src={preview} alt={alt} />
+    : <span className="stock-variant-photo-empty">Photo</span>;
+}
+
+function serializeVariants(variants) {
+  return variants.map(({ id, couleur, quantite }) => ({
+    ...(id ? { id } : {}),
+    couleur: couleur.trim(),
+    quantite: Math.max(Number(quantite) || 0, 0)
+  }));
+}
+
+function appendVariantPhotos(payload, variants) {
+  variants.forEach((variant, index) => {
+    if (variant.photo) payload.append('couleur_photo_' + index, variant.photo);
+  });
+}
+
+function ColorVariantEditor({ value, onChange, onMessage }) {
+  const [draftColor, setDraftColor] = useState('');
+  const [draftQuantity, setDraftQuantity] = useState('1');
+  const [draftPhoto, setDraftPhoto] = useState(null);
+  const draftPhotoInput = useRef(null);
+
+  function updateVariant(key, changes) {
+    onChange({
+      ...value,
+      couleurs: value.couleurs.map((variant) => variant.key === key ? { ...variant, ...changes } : variant)
+    });
+  }
+
+  function addVariant() {
+    const couleur = draftColor.trim();
+    const quantite = Number(draftQuantity);
+    if (!couleur) {
+      onMessage('Indiquez le nom de la couleur.');
+      return;
+    }
+    if (!Number.isInteger(quantite) || quantite < 0) {
+      onMessage('La quantité doit être un nombre entier positif ou nul.');
+      return;
+    }
+    if (!draftPhoto) {
+      onMessage('Ajoutez une photo pour cette couleur.');
+      return;
+    }
+    if (value.couleurs.some((variant) => variant.couleur.toLocaleLowerCase('fr') === couleur.toLocaleLowerCase('fr'))) {
+      onMessage('Cette couleur existe déjà pour ce modèle.');
+      return;
+    }
+
+    onChange({
+      ...value,
+      couleurs: [...value.couleurs, newVariant({ couleur, quantite: String(quantite), photo: draftPhoto })]
+    });
+    setDraftColor('');
+    setDraftQuantity('1');
+    setDraftPhoto(null);
+    if (draftPhotoInput.current) draftPhotoInput.current.value = '';
+    onMessage('');
+  }
+
+  return (
+    <div className="stock-color-editor">
+      <span className="stock-field-label">Variantes couleur <small>Photo et quantité par couleur</small></span>
+      <div className="stock-color-add stock-variant-draft">
+        <input value={draftColor} onChange={(event) => setDraftColor(event.target.value)} placeholder="Ex. Noir" maxLength="80" />
+        <input className="stock-variant-quantity" type="number" min="0" step="1" value={draftQuantity} onChange={(event) => setDraftQuantity(event.target.value)} aria-label="Quantité de la couleur" />
+        <label className="stock-variant-file">
+          <input ref={draftPhotoInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setDraftPhoto(event.target.files?.[0] || null)} />
+          {draftPhoto ? 'Photo choisie' : 'Choisir la photo'}
+        </label>
+        <button type="button" className="secondary-button" onClick={addVariant}>Ajouter</button>
+      </div>
+      <small className="stock-variant-hint">Chaque couleur doit avoir sa propre photo. La quantité peut être mise à zéro si elle est momentanément indisponible.</small>
+      <div className="stock-variant-list">
+        {value.couleurs.map((variant) => (
+          <div className="stock-variant-row" key={variant.key}>
+            <div className="stock-variant-photo"><VariantPhotoPreview variant={variant} alt={variant.couleur} /></div>
+            <div className="stock-variant-details">
+              <strong>{variant.couleur}</strong>
+              <label>Quantité<input type="number" min="0" step="1" value={variant.quantite} onChange={(event) => updateVariant(variant.key, { quantite: event.target.value })} /></label>
+              <small>{variant.photo?.name || variant.file_name || (variant.photo_url ? 'Photo enregistrée' : 'Photo manquante')}</small>
+            </div>
+            <label className="stock-variant-file stock-variant-replace">
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => updateVariant(variant.key, { photo: event.target.files?.[0] || null })} />
+              Remplacer
+            </label>
+            <button type="button" className="stock-variant-remove" onClick={() => onChange({ ...value, couleurs: value.couleurs.filter((item) => item.key !== variant.key) })} aria-label={'Retirer la couleur ' + variant.couleur}>×</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Stock() {
   const [modeles, setModeles] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -21,8 +144,6 @@ export default function Stock() {
   const [catalogueToken, setCatalogueToken] = useState('');
   const [sharing, setSharing] = useState(false);
   const [activePhoto, setActivePhoto] = useState(null);
-  const [newColor, setNewColor] = useState('');
-  const [editColorDraft, setEditColorDraft] = useState('');
   const fileInput = useRef(null);
   const editFileInput = useRef(null);
 
@@ -63,7 +184,7 @@ export default function Stock() {
       if (filter === 'active' && !modele.is_active) return false;
       if (filter === 'archived' && modele.is_active) return false;
       if (!normalizedSearch) return true;
-      return [modele.nom, modele.reference, modele.description]
+      return [modele.nom, modele.reference, modele.description, ...(modele.couleurs || []).map((variant) => variant.couleur)]
         .filter(Boolean)
         .join(' ')
         .toLocaleLowerCase('fr')
@@ -97,29 +218,32 @@ export default function Stock() {
     }
   }
 
+  function buildPayload(formData, mainPhoto) {
+    const payload = new FormData();
+    payload.append('nom', formData.nom);
+    payload.append('description', formData.description);
+    payload.append('couleurs', JSON.stringify(serializeVariants(formData.couleurs)));
+    appendVariantPhotos(payload, formData.couleurs);
+    if (mainPhoto) payload.append('file', mainPhoto);
+    return payload;
+  }
+
   async function submitModel(event) {
     event.preventDefault();
     if (!photo) {
-      setMessage('Ajoutez une photo pour enregistrer ce modèle.');
+      setMessage('Ajoutez une photo principale pour enregistrer ce modèle.');
       return;
     }
 
     setSaving(true);
     setMessage('');
-    const payload = new FormData();
-    payload.append('nom', form.nom);
-    payload.append('description', form.description);
-    payload.append('couleurs', JSON.stringify(form.couleurs));
-    payload.append('file', photo);
-
     try {
-      const response = await api.post('/modeles-stock', payload);
+      const response = await api.post('/modeles-stock', buildPayload(form, photo));
       setModeles((current) => [response.data.modele, ...current]);
       setForm(emptyForm);
       setPhoto(null);
-      setNewColor('');
       if (fileInput.current) fileInput.current.value = '';
-      setMessage('Modèle ajouté à la galerie.');
+      setMessage('Modèle ajouté avec ses variantes couleur.');
     } catch (requestError) {
       setMessage(requestError.response?.data?.error || 'Impossible d’ajouter ce modèle.');
     } finally {
@@ -143,9 +267,14 @@ export default function Stock() {
     setEditForm({
       nom: modele.nom,
       description: modele.description || '',
-      couleurs: (modele.couleurs || []).map((color) => color.couleur)
+      couleurs: (modele.couleurs || []).map((variant) => newVariant({
+        id: variant.id,
+        couleur: variant.couleur,
+        quantite: String(variant.quantite ?? 1),
+        photo_url: variant.photo_url || '',
+        file_name: variant.file_name || ''
+      }))
     });
-    setEditColorDraft('');
     setEditPhoto(null);
     if (editFileInput.current) editFileInput.current.value = '';
     setMessage('');
@@ -155,36 +284,23 @@ export default function Stock() {
     setEditingModelId(null);
     setEditPhoto(null);
     setEditPreview('');
-    setEditColorDraft('');
     if (editFileInput.current) editFileInput.current.value = '';
-  }
-
-  function addColor(setter, draft, reset) {
-    const color = draft.trim();
-    if (!color) return;
-    setter((current) => current.couleurs.some((item) => item.toLocaleLowerCase('fr') === color.toLocaleLowerCase('fr'))
-      ? current
-      : { ...current, couleurs: [...current.couleurs, color] });
-    reset('');
   }
 
   async function saveModel(event) {
     event.preventDefault();
+    if (editForm.couleurs.some((variant) => !variant.photo && !variant.photo_url)) {
+      setMessage('Ajoutez une photo à chaque couleur avant d’enregistrer.');
+      return;
+    }
+
     setSaving(true);
     setMessage('');
     try {
-      let payload = editForm;
-      if (editPhoto) {
-        payload = new FormData();
-        payload.append('nom', editForm.nom);
-        payload.append('description', editForm.description);
-        payload.append('couleurs', JSON.stringify(editForm.couleurs));
-        payload.append('file', editPhoto);
-      }
-      const response = await api.patch(`/modeles-stock/${editingModelId}`, payload);
+      const response = await api.patch(`/modeles-stock/${editingModelId}`, buildPayload(editForm, editPhoto));
       setModeles((current) => current.map((modele) => modele.id === editingModelId ? response.data.modele : modele));
       cancelEditing();
-      setMessage('Modèle corrigé avec succès.');
+      setMessage('Modèle et variantes corrigés avec succès.');
     } catch (requestError) {
       setMessage(requestError.response?.data?.error || 'Impossible de modifier ce modèle.');
     } finally {
@@ -198,14 +314,14 @@ export default function Stock() {
         <div>
           <span className="eyebrow">Catalogue interne</span>
           <h1>Stock de modèles</h1>
-          <p>Conservez vos modèles préférés et réutilisez-les rapidement dans les nouvelles commandes.</p>
+          <p>Conservez un modèle avec plusieurs variantes couleur, chacune avec sa photo et sa quantité.</p>
         </div>
         <span className="stock-count"><strong>{activeCount}</strong> modèle{activeCount > 1 ? 's' : ''} disponible{activeCount > 1 ? 's' : ''}</span>
       </div>
 
       <section className="catalog-share-card">
         <div className="catalog-share-icon">↗</div>
-        <div className="catalog-share-copy"><span>Catalogue client</span><h2>Partagez vos modèles sans donner accès à l’application</h2><p>Le client choisit ses modèles, ajoute ses préférences au panier et vous recevez directement sa demande.</p></div>
+        <div className="catalog-share-copy"><span>Catalogue client</span><h2>Partagez vos modèles sans donner accès à l’application</h2><p>Le client choisit ses modèles, ses couleurs et ses préférences au panier.</p></div>
         <div className="catalog-share-actions">
           <input value={catalogueLink} readOnly aria-label="Lien public du catalogue" />
           <button type="button" className="primary-button compact" onClick={copyCatalogueLink} disabled={!catalogueLink}>Copier le lien</button>
@@ -217,12 +333,12 @@ export default function Stock() {
       <section className="stock-create-card">
         <div className="stock-create-copy">
           <span className="stock-create-icon">＋</span>
-          <div><h2>Ajouter un modèle</h2><p>Une seule photo suffit. Vous pourrez ensuite sélectionner ce modèle lors de chaque commande.</p></div>
+          <div><h2>Ajouter un modèle</h2><p>Ajoutez ensuite chaque couleur avec sa photo et son nombre de paires.</p></div>
         </div>
         <form className="stock-form" onSubmit={submitModel}>
           <label className="stock-photo-field">
             <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] || null)} required />
-            {preview ? <img src={preview} alt="Aperçu du nouveau modèle" /> : <span><strong>Ajouter la photo</strong><small>JPG, PNG ou WebP · 5 Mo maximum</small></span>}
+            {preview ? <img src={preview} alt="Aperçu du modèle" /> : <span><strong>Ajouter la photo principale</strong><small>JPG, PNG ou WebP · 5 Mo maximum</small></span>}
           </label>
           <div className="stock-form-fields">
             <div className="stock-form-grid">
@@ -230,11 +346,7 @@ export default function Stock() {
               <div className="stock-auto-reference"><span>Numéro automatique</span><strong>Attribué après l’enregistrement</strong></div>
             </div>
             <label>Description <small>Facultative</small><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Style, particularités ou recommandations…" maxLength="1000" /></label>
-            <div className="stock-color-editor">
-              <span className="stock-field-label">Couleurs disponibles <small>Facultatives</small></span>
-              <div className="stock-color-add"><input value={newColor} onChange={(event) => setNewColor(event.target.value)} placeholder="Ex. Noir, marron…" maxLength="80" /><button type="button" className="secondary-button" onClick={() => addColor(setForm, newColor, setNewColor)}>Ajouter</button></div>
-              <div className="stock-color-chips">{form.couleurs.map((color) => <span key={color}>{color}<button type="button" onClick={() => setForm({ ...form, couleurs: form.couleurs.filter((item) => item !== color) })} aria-label={`Retirer la couleur ${color}`}>×</button></span>)}</div>
-            </div>
+            <ColorVariantEditor value={form} onChange={setForm} onMessage={setMessage} />
             <button type="submit" className="primary-button" disabled={saving}>{saving ? 'Enregistrement…' : 'Ajouter à la galerie'} <span>→</span></button>
           </div>
         </form>
@@ -273,15 +385,11 @@ export default function Stock() {
                       <label className="stock-edit-photo">
                         <input ref={editFileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setEditPhoto(event.target.files?.[0] || null)} />
                         <img src={editPreview || modele.photo_url} alt={'Aperçu de ' + modele.nom} />
-                        <span><strong>Modifier la photo</strong><small>JPG, PNG ou WebP · 5 Mo maximum</small></span>
+                        <span><strong>Modifier la photo principale</strong><small>JPG, PNG ou WebP · 5 Mo maximum</small></span>
                       </label>
                       <input aria-label="Nom du modèle" value={editForm.nom} onChange={(event) => setEditForm({ ...editForm, nom: event.target.value })} maxLength="120" required />
                       <textarea aria-label="Description du modèle" value={editForm.description} onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} maxLength="1000" placeholder="Description facultative" />
-                      <div className="stock-color-editor">
-                        <span className="stock-field-label">Couleurs disponibles</span>
-                        <div className="stock-color-add"><input value={editColorDraft} onChange={(event) => setEditColorDraft(event.target.value)} placeholder="Ajouter une couleur…" maxLength="80" /><button type="button" className="secondary-button" onClick={() => addColor(setEditForm, editColorDraft, setEditColorDraft)}>Ajouter</button></div>
-                        <div className="stock-color-chips">{editForm.couleurs.map((color) => <span key={color}>{color}<button type="button" onClick={() => setEditForm({ ...editForm, couleurs: editForm.couleurs.filter((item) => item !== color) })} aria-label={`Retirer la couleur ${color}`}>×</button></span>)}</div>
-                      </div>
+                      <ColorVariantEditor value={editForm} onChange={setEditForm} onMessage={setMessage} />
                       <div className="record-actions">
                         <button type="submit" className="primary-button compact" disabled={saving}>Enregistrer</button>
                         <button type="button" className="secondary-button" onClick={cancelEditing}>Annuler</button>
@@ -291,7 +399,20 @@ export default function Stock() {
                     <>
                       <div><h3>{modele.nom}</h3>{modele.reference && <small>{modele.reference}</small>}</div>
                       <p>{modele.description || 'Aucune description ajoutée.'}</p>
-                      {modele.couleurs?.length > 0 && <div className="stock-model-colors"><span>Couleurs</span><div>{modele.couleurs.map((color) => <b key={color.id || color.couleur}>{color.couleur}</b>)}</div></div>}
+                      {modele.couleurs?.length > 0 && (
+                        <div className="stock-model-colors">
+                          <span>Variantes disponibles</span>
+                          <div>
+                            {modele.couleurs.map((variant) => (
+                              <button type="button" key={variant.id || variant.couleur} onClick={() => setActivePhoto({ storage_path: variant.photo_url || modele.photo_url, nom: modele.nom + ' — ' + variant.couleur })}>
+                                <VariantPhotoPreview variant={variant} alt={variant.couleur} />
+                                <b>{variant.couleur}</b>
+                                <small>{variant.quantite} paire{Number(variant.quantite) > 1 ? 's' : ''}</small>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="stock-model-actions">
                         {modele.is_active && <Link className="stock-use-button" to={`/create-order?modele=${modele.id}`}>Utiliser pour une commande</Link>}
                         <button type="button" onClick={() => startEditing(modele)}>Corriger</button>

@@ -244,6 +244,16 @@ async function get(path, options = {}) {
     return { data: { challenge: data } };
   }
 
+  const clientPortalMatch = path.match(/^\/client-portal\/([0-9a-f-]+)$/i);
+  if (clientPortalMatch) {
+    const { data, error } = await supabase.rpc('get_client_portal', {
+      p_client_token: clientPortalMatch[1]
+    });
+    if (error) throw apiError(error, 'Impossible d’ouvrir votre suivi.');
+    if (!data) throw apiError(null, 'Ce lien client est invalide ou expiré.');
+    return { data: { portal: data } };
+  }
+
   if (path === '/demandes-catalogue') {
     const { data, error } = await supabase
       .from('demandes_catalogue')
@@ -580,6 +590,20 @@ async function post(path, body) {
       if (uploadedPaths.length > 0) await supabase.storage.from('modele-photos').remove(uploadedPaths);
       throw requestError;
     }
+  }
+
+  if (path === '/client-portal/delivery') {
+    const { data, error } = await supabase.rpc('save_client_delivery', {
+      p_client_token: body.client_token,
+      p_commande_id: Number(body.commande_id),
+      p_nom_reception: body.nom_reception,
+      p_telephone: body.telephone,
+      p_adresse: body.adresse,
+      p_ville: body.ville,
+      p_instructions: body.instructions || null
+    });
+    if (error) throw apiError(error, 'Impossible d’enregistrer les informations de livraison.');
+    return { data };
   }
 
   const publicCatalogRequestMatch = path.match(/^\/catalogue-public\/([0-9a-f-]+)\/demandes$/i);

@@ -67,6 +67,7 @@ function App() {
   const realtimeNotifications = useNotifications(user);
   const isManager = user && ['revendeur', 'admin'].includes(user.role);
   const isPublicCatalog = /^#\/catalogue\/[^/?#]+/.test(currentHash);
+  const isClientPortal = /^#\/client\/[0-9a-f-]+$/i.test(currentHash);
 
   function handleLogin(currentUser) {
     localStorage.setItem('ehe_user', JSON.stringify(currentUser));

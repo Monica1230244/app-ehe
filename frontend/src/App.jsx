@@ -14,6 +14,7 @@ import Accounting from './pages/Accounting';
 import Statistics from './pages/Statistics';
 import Notifications from './pages/Notifications';
 import PublicCatalog from './pages/PublicCatalog';
+import ClientPortal from './pages/ClientPortal';
 import CatalogRequests from './pages/CatalogRequests';
 import useNotifications from './hooks/useNotifications';
 import NotificationToast from './components/NotificationToast';
@@ -128,6 +129,17 @@ function App() {
         <h1>Configuration requise</h1>
         <p>Ajoutez l’adresse et la clé publique Supabase dans les variables de déploiement.</p>
       </main>
+    );
+  }
+
+  if (isClientPortal) {
+    return (
+      <HashRouter>
+        <Routes>
+          <Route path="/client/:clientToken" element={<ClientPortal />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
     );
   }
 

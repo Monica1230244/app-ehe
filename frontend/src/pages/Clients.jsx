@@ -29,14 +29,14 @@ export default function Clients() {
     try {
       const response = await api.post(`/clients/${client.id}/catalogue-link`, {});
       const { catalogue_token: catalogueToken, token: clientToken, expires_at: expiresAt } = response.data;
-      const link = `${window.location.origin}${window.location.pathname}#/catalogue/${catalogueToken}?client=${clientToken}`;
+      const link = `${window.location.origin}${window.location.pathname}#/client/${clientToken}`;
       setClients((current) => current.map((item) => item.id === client.id
         ? { ...item, catalogue_token: clientToken, catalogue_token_expires_at: expiresAt }
         : item));
       const expiryLabel = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(expiresAt));
       try {
         await navigator.clipboard.writeText(link);
-        setMessage(`Nouveau lien personnel de ${client.nom} copié. Il est valable jusqu’au ${expiryLabel}.`);
+        setMessage(`Nouveau lien de suivi de ${client.nom} copié. Il est valable jusqu’au ${expiryLabel}.`);
       } catch {
         setMessage(`Lien personnel valable jusqu’au ${expiryLabel} : ${link}`);
       }
@@ -131,7 +131,7 @@ export default function Clients() {
                     <p className="text-sm text-slate-600">{client.telephone}</p>
                   </div>
                   <div className="record-actions">
-                    <button type="button" onClick={() => copyClientCatalogLink(client)} className="secondary-button accent">Lien catalogue</button>
+                    <button type="button" onClick={() => copyClientCatalogLink(client)} className="secondary-button accent">Suivi client</button>
                     <button type="button" onClick={() => startEditing(client)} className="secondary-button">Corriger</button>
                     <button type="button" onClick={() => showHistory(client.id)} className="secondary-button accent">Historique</button>
                   </div>

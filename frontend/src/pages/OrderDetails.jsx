@@ -4,6 +4,7 @@ import api from '../api/client';
 import { sendPushForOrder } from '../services/pushNotifications';
 
 const statusLabels = { en_attente: 'En attente', en_fabrication: 'En fabrication', prete: 'Prête', livree: 'Livrée', annulee: 'Annulée' };
+const deliveryStatusLabels = { recue: 'Informations reçues', confirmee: 'Livraison confirmée', livree: 'Livrée' };
 
 function dateLabel(value) {
   return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
@@ -86,6 +87,7 @@ export default function OrderDetails({ user }) {
   const [commande, setCommande] = useState(null);
   const [articles, setArticles] = useState([]);
   const [photos, setPhotos] = useState([]);
+  const [delivery, setDelivery] = useState(null);
   const [history, setHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -110,12 +112,14 @@ export default function OrderDetails({ user }) {
         api.get(`/commandes/${id}`),
         api.get(`/commandes/${id}/articles`),
         api.get('/photos', { params: { commande_id: id } }),
-        api.get(`/commandes/${id}/history`)
+        api.get(`/commandes/${id}/history`),
+        api.get(`/commandes/${id}/livraison`)
       ]);
       setCommande(commandeResponse.data.commande);
       setArticles(articlesResponse.data.articles);
       setPhotos(photosResponse.data.photos);
       setHistory(historyResponse.data.history);
+      setDelivery(deliveryResponse.data.livraison);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible de charger la commande.');
     } finally {
@@ -142,6 +146,17 @@ export default function OrderDetails({ user }) {
     } catch (error) {
       setMessage(error.response?.data?.error || 'Cette mise à jour est impossible.');
       return false;
+    }
+  }
+
+  async function updateDeliveryStatus(statut) {
+    try {
+      const response = await api.patch(`/commandes/${id}/livraison`, { statut });
+      setDelivery(response.data.livraison);
+      setMessage('Statut de livraison mis à jour.');
+      if (statut === 'livree') await loadOrder();
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Impossible de mettre à jour la livraison.');
     }
   }
 
@@ -279,6 +294,7 @@ export default function OrderDetails({ user }) {
   const canNotifyClient = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'prete' && whatsappNumber(commande.client_telephone);
   const canEdit = ['revendeur', 'admin'].includes(user.role) && commande.statut === 'en_attente';
   const canDelete = ['revendeur', 'admin'].includes(user.role);
+  const canManageDelivery = ['revendeur', 'admin'].includes(user.role);
 
   return (
     <div className="page-shell max-w-4xl space-y-5">
@@ -383,6 +399,32 @@ export default function OrderDetails({ user }) {
           </div>
         )}
       </section>
+
+      {delivery && (
+        <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">Livraison</h2>
+              <p className="mt-1 text-sm text-slate-600">Les informations transmises par le client et l’état de remise.</p>
+            </div>
+            <span className="status-badge status-prete">{deliveryStatusLabels[delivery.statut] || delivery.statut}</span>
+          </div>
+          <div className="mt-4 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm md:grid-cols-2">
+            <p><strong>Réception :</strong> {delivery.nom_reception}</p>
+            <p><strong>Téléphone :</strong> {delivery.telephone}</p>
+            <p><strong>Adresse :</strong> {delivery.adresse}</p>
+            <p><strong>Ville :</strong> {delivery.ville}</p>
+            {delivery.instructions && <p className="md:col-span-2"><strong>Instructions :</strong> {delivery.instructions}</p>}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">Dernière mise à jour : {dateLabel(delivery.updated_at)}</p>
+          {canManageDelivery && delivery.statut !== 'livree' && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              {delivery.statut === 'recue' && <button type="button" className="primary-button compact" onClick={() => updateDeliveryStatus('confirmee')}>Confirmer la livraison</button>}
+              {delivery.statut === 'confirmee' && <button type="button" className="primary-button compact" onClick={() => updateDeliveryStatus('livree')}>Marquer comme livrée</button>}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold">Photos de fabrication</h2>

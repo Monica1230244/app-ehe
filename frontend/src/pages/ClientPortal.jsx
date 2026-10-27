@@ -21,6 +21,8 @@ const statusDescriptions = {
   annulee: 'Cette commande a été annulée.'
 };
 
+const deliveryStatusLabels = { recue: 'Informations reçues', confirmee: 'Livraison confirmée', livree: 'Livrée' };
+
 function formatDate(value) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('fr-FR', {
@@ -294,7 +296,7 @@ export default function ClientPortal() {
                               <span className="eyebrow">Dernière étape</span>
                               <h4>Organiser la livraison</h4>
                             </div>
-                            {order.livraison?.statut && <span className="client-portal-delivery-saved">Informations envoyées</span>}
+                            {order.livraison?.statut && <span className="client-portal-delivery-saved">{deliveryStatusLabels[order.livraison.statut] || 'Informations envoyées'}</span>}
                           </div>
                           <p>Remplissez ce formulaire, puis confirmez avec EHE sur WhatsApp si besoin.</p>
                           <div className="client-portal-form">

@@ -375,6 +375,17 @@ async function get(path, options = {}) {
     return { data: { history: data } };
   }
 
+  const deliveryMatch = path.match(/^\/commandes\/(\d+)\/livraison$/);
+  if (deliveryMatch) {
+    const { data, error } = await supabase
+      .from('client_commande_livraisons')
+      .select('id, commande_id, client_id, nom_reception, telephone, adresse, ville, instructions, statut, created_at, updated_at')
+      .eq('commande_id', Number(deliveryMatch[1]))
+      .maybeSingle();
+    if (error && error.code !== '42P01') throw apiError(error, 'Impossible de charger les informations de livraison.');
+    return { data: { livraison: error?.code === '42P01' ? null : data } };
+  }
+
   const messagesMatch = path.match(/^\/commandes\/(\d+)\/messages$/);
   if (messagesMatch) {
     const { data, error } = await supabase
@@ -949,6 +960,16 @@ async function patch(path, body = {}) {
       .single();
     if (error) throw apiError(error, 'Impossible de modifier ce modèle.');
     return { data: { modele: await signedStockModel(data) } };
+  }
+
+  const deliveryStatusMatch = path.match(/^\/commandes\/(\d+)\/livraison$/);
+  if (deliveryStatusMatch) {
+    const { data, error } = await supabase.rpc('update_client_delivery_status', {
+      p_commande_id: Number(deliveryStatusMatch[1]),
+      p_statut: body.statut
+    });
+    if (error) throw apiError(error, 'Impossible de mettre à jour le statut de livraison.');
+    return { data: { livraison: data } };
   }
 
   const statusMatch = path.match(/^\/commandes\/(\d+)\/status$/);

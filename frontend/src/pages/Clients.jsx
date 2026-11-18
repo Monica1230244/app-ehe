@@ -8,6 +8,7 @@ export default function Clients() {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState({ clientId: null, commandes: [] });
   const [editingClientId, setEditingClientId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
@@ -47,13 +48,23 @@ export default function Clients() {
 
   async function submitClient(event) {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setMessage('');
     try {
       const response = await api.post('/clients', form);
-      setClients((current) => [response.data.client, ...current]);
       setForm(emptyForm);
-      setMessage('Client enregistré.');
+      if (response.data.alreadyExists) {
+        setMessage('Ce numéro existe déjà dans vos clients. Le client existant a été conservé.');
+        await loadClients('');
+      } else {
+        setClients((current) => [response.data.client, ...current]);
+        setMessage('Client enregistré.');
+      }
     } catch (error) {
       setMessage(error.response?.data?.error || 'Impossible d’enregistrer le client.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -97,7 +108,7 @@ export default function Clients() {
           </select>
           <input className="rounded border px-3 py-2" placeholder="Nom complet" value={form.nom} onChange={(event) => setForm({ ...form, nom: event.target.value })} required />
           <input className="rounded border px-3 py-2" placeholder="Téléphone" value={form.telephone} onChange={(event) => setForm({ ...form, telephone: event.target.value })} required />
-          <button className="rounded bg-blue-700 px-4 py-2 font-medium text-white md:col-span-3">Enregistrer le client</button>
+          <button type="submit" disabled={saving} className="rounded bg-blue-700 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-3">{saving ? 'Enregistrement…' : 'Enregistrer le client'}</button>
         </form>
       </section>
 

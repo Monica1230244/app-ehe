@@ -530,6 +530,61 @@ async function post(path, body) {
     };
   }
 
+  if (path === '/clients') {
+    const civilite = String(body?.civilite || '').trim();
+    const nom = String(body?.nom || '').trim();
+    const telephone = String(body?.telephone || '').trim();
+    const normalizedTelephone = telephone.replace(/\\D/g, '');
+
+    if (!['Mr', 'Mme'].includes(civilite)) {
+      throw apiError(null, 'Veuillez choisir Mr ou Mme.');
+    }
+    if (nom.length < 2 || nom.length > 120) {
+      throw apiError(null, 'Le nom doit contenir entre 2 et 120 caractères.');
+    }
+    if (normalizedTelephone.length < 6 || normalizedTelephone.length > 20) {
+      throw apiError(null, 'Saisissez un numéro de téléphone valide.');
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw apiError(authError, 'Session expirée.');
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, is_active')
+      .eq('id', authData.user.id)
+      .single();
+    if (profileError || !profile?.is_active || !['revendeur', 'admin'].includes(profile.role)) {
+      throw apiError(profileError, 'Seul un revendeur actif peut enregistrer un client.');
+    }
+
+    const { data: existingClients, error: existingError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('revendeur_id', authData.user.id);
+    if (existingError) throw apiError(existingError, 'Impossible de vérifier les clients existants.');
+
+    const duplicate = (existingClients || []).find((client) => (
+      String(client.telephone || '').replace(/\\D/g, '') === normalizedTelephone
+    ));
+    if (duplicate) {
+      return { data: { client: duplicate, alreadyExists: true } };
+    }
+
+    const { data, error } = await supabase
+      .from('clients')
+      .insert({
+        revendeur_id: authData.user.id,
+        civilite,
+        nom,
+        telephone
+      })
+      .select()
+      .single();
+    if (error) throw apiError(error, 'Impossible d’enregistrer ce client.');
+    return { data: { client: data, alreadyExists: false } };
+  }
+
   if (path === '/modeles-stock') {
     const file = body.get('file');
     const nom = String(body.get('nom') || '').trim();

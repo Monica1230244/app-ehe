@@ -534,7 +534,7 @@ async function post(path, body) {
     const civilite = String(body?.civilite || '').trim();
     const nom = String(body?.nom || '').trim();
     const telephone = String(body?.telephone || '').trim();
-    const normalizedTelephone = telephone.replace(/\\D/g, '');
+    const normalizedTelephone = telephone.replace(/\D/g, '');
 
     if (!['Mr', 'Mme'].includes(civilite)) {
       throw apiError(null, 'Veuillez choisir Mr ou Mme.');
@@ -565,7 +565,7 @@ async function post(path, body) {
     if (existingError) throw apiError(existingError, 'Impossible de vérifier les clients existants.');
 
     const duplicate = (existingClients || []).find((client) => (
-      String(client.telephone || '').replace(/\\D/g, '') === normalizedTelephone
+      String(client.telephone || '').replace(/\D/g, '') === normalizedTelephone
     ));
     if (duplicate) {
       return { data: { client: duplicate, alreadyExists: true } };
